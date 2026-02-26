@@ -60,3 +60,4 @@
 - [ ] Resume from last position (mid-session recovery)
 - [ ] Real-time dashboard refresh (polling/WebSocket)
 - [ ] Expand question bank
+- [x] 翻题时自动滚动到页面顶部

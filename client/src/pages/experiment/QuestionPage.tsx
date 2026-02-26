@@ -140,6 +140,8 @@ export function QuestionPage({
         setCurrentIndex(result.nextIndex);
         setIsSubmitting(false);
         resetTimer();
+        // Scroll to top when advancing to next question
+        window.scrollTo({ top: 0, behavior: "smooth" });
       }
     } catch {
       setIsSubmitting(false);
