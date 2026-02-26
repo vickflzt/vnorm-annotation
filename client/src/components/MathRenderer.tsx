@@ -244,12 +244,16 @@ function buildHtml(src: string): string {
       mathContent = openLine;
       i++;
       while (i < lines.length) {
-        if (/\$\$\s*$/.test(lines[i])) {
-          mathContent += "\n" + lines[i].replace(/\$\$\s*$/, "");
+        // Only a line that is SOLELY $$ (with optional whitespace) ends the block.
+        // A line like "\mathbf{n} = $$" is content, not a closing delimiter.
+        if (/^\s*\$\$\s*$/.test(lines[i])) {
           i++;
           break;
         }
-        mathContent += "\n" + lines[i];
+        // Strip any stray $$ delimiters that appear mid-line (format noise from LLM output)
+        // e.g. "   \mathbf{n} = $$" → "   \mathbf{n} = "
+        const cleanedLine = lines[i].replace(/\$\$/g, "");
+        mathContent += "\n" + cleanedLine;
         i++;
       }
       segments.push({ kind: "math-block", content: mathContent.trim() });
