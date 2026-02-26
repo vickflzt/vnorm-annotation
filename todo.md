@@ -76,3 +76,4 @@
 - [ ] 修复首页 "Failed to fetch" API Mutation 错误（发生在 /?from_webdev=1，管理员用户）
 - [x] 从5道含图题（FN01/FN04/FN09/FN10/TN07）的 question 字段中删除图形占位符文本
 - [x] 修复 MathRenderer：$$...$$ 块级公式与后续行内文字混排时未正确分割渲染（预处理拆分逻辑）
+- [x] 修复 MathRenderer：含 \$ 转义字符的题目（如 superfactorial $n\$$ 和 $4\$$）渲染错误，\$$ 被误识别为块级公式分隔符（添加 findUnescapedDoubleDollar 跳过转义）

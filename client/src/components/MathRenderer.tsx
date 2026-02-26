@@ -166,22 +166,41 @@ function buildHtml(src: string): string {
       const isPureBlockLine = /^\s*\$\$/.test(line) && /\$\$\s*$/.test(line);
       const isOpeningOnly = /^\s*\$\$\s*$/.test(line); // just "$$" alone
       if (isPureBlockLine || isOpeningOnly) return [line];
-      // If the line contains $$ anywhere, split around it
-      if (line.includes("$$")) {
-        // Split the line by $$ pairs, preserving the delimiters
+      // If the line contains $$ anywhere, split around it.
+      // IMPORTANT: We must skip \$$ (escaped dollar followed by $) to avoid
+      // treating the $ in \$ as part of a $$ delimiter.
+      // Strategy: find $$ that is NOT preceded by a backslash.
+      const findUnescapedDoubleDollar = (str: string, from = 0): number => {
+        let pos = from;
+        while (pos <= str.length - 2) {
+          const idx = str.indexOf("$$", pos);
+          if (idx === -1) return -1;
+          // Check if the $$ is preceded by a backslash (i.e. \$$)
+          if (idx > 0 && str[idx - 1] === "\\") {
+            pos = idx + 2; // skip this \$$ and keep searching
+            continue;
+          }
+          return idx;
+        }
+        return -1;
+      };
+
+      if (findUnescapedDoubleDollar(line) !== -1) {
+        // Split the line by unescaped $$ pairs, preserving the delimiters
         const parts: string[] = [];
         let rest = line;
-        while (rest.includes("$$")) {
-          const open = rest.indexOf("$$");
-          const close = rest.indexOf("$$", open + 2);
+        let searchFrom = 0;
+        while (true) {
+          const open = findUnescapedDoubleDollar(rest, searchFrom);
+          if (open === -1) break;
+          const close = findUnescapedDoubleDollar(rest, open + 2);
           if (close === -1) break; // unclosed $$, leave as-is
           const before = rest.slice(0, open);
           const math = rest.slice(open, close + 2); // includes $$ delimiters
           rest = rest.slice(close + 2);
+          searchFrom = 0; // reset for new rest string
           if (before.trim()) parts.push(before.trimEnd());
           parts.push(math); // pure $$...$$ line
-          // trailing text (after closing $$) may have punctuation like "," — strip leading punct
-          // but keep it as a separate text line
         }
         if (rest.trim()) parts.push(rest.trimStart());
         return parts.length > 0 ? parts : [line];
