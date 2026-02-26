@@ -1,0 +1,34 @@
+{
+  "query": "SELECT itemId, LEFT(question, 200) as question_preview FROM question_bank WHERE question LIKE '%图示%' OR question LIKE '%geometric diagram%' OR question LIKE '%Figure%' OR question LIKE '%figure%' OR question LIKE '%diagram%' LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4EMZXV1BE262rJP.02474c5205e2 --database Yac4zPy3BEzfVh9QddoaLw --execute SELECT itemId, LEFT(question, 200) as question_preview FROM question_bank WHERE question LIKE '%图示%' OR question LIKE '%geometric diagram%' OR question LIKE '%Figure%' OR question LIKE '%figure%' OR question LIKE '%diagram%' LIMIT 10;",
+  "rows": [
+    {
+      "itemId": "TN07",
+      "question_preview": "Triangle $ABC$ is isosceles, with $AB=AC$ and altitude $AM=11.$ Suppose that there is a point $D$ on $\\overline{AM}$ with $AD=10$ and $\\angle BDC=3\\angle BAC.$  Find the perimeter of triangle $ABC.$"
+    },
+    {
+      "itemId": "FN01",
+      "question_preview": "Twelve 1 by 1 squares form a rectangle, as shown. What is the total area of the shaded region? "
+    },
+    {
+      "itemId": "FN04",
+      "question_preview": "The circle $x^2 + y^2 = 2$ and the parabola $y^2 = 8x$ have two common tangents, forming four points of tangency.  Find the area of the quadrilateral formed by the four points of tangency."
+    },
+    {
+      "itemId": "FN09",
+      "question_preview": "Triangle $ABC$ is isosceles, with $AB=AC$ and altitude $AM=11.$ Suppose that there is a point $D$ on $\\overline{AM}$ with $AD=10$ and $\\angle BDC=3\\angle BAC.$  Find the perimeter of triangle $ABC.$"
+    },
+    {
+      "itemId": "FN10",
+      "question_preview": "Twelve 1 by 1 squares form a rectangle, as shown. What is the total area of the shaded region? "
+    }
+  ],
+  "messages": [
+    "> ⚠️ *此题原含几何图形，图形无法在浏览器中显示。/ This problem originally contained a geometric figure which cannot be displa",
+    "> ⚠️ *此题原",
+    "> ⚠️ *此题原含几何图形，图形无法在浏览器中显示。/ This problem originally contained a geometric figure which cannot be displa"
+  ],
+  "stdout": "itemId\tquestion_preview\nTN07\tTriangle $ABC$ is isosceles, with $AB=AC$ and altitude $AM=11.$ Suppose that there is a point $D$ on $\\overline{AM}$ with $AD=10$ and $\\angle BDC=3\\angle BAC.$  Find the perimeter of triangle $ABC.$\n\n\nFN01\tTwelve 1 by 1 squares form a rectangle, as shown. What is the total area of the shaded region? \n> ⚠️ *此题原含几何图形，图形无法在浏览器中显示。/ This problem originally contained a geometric figure which cannot be displa\nFN04\tThe circle $x^2 + y^2 = 2$ and the parabola $y^2 = 8x$ have two common tangents, forming four points of tangency.  Find the area of the quadrilateral formed by the four points of tangency.\n\n\n> ⚠️ *此题原\nFN09\tTriangle $ABC$ is isosceles, with $AB=AC$ and altitude $AM=11.$ Suppose that there is a point $D$ on $\\overline{AM}$ with $AD=10$ and $\\angle BDC=3\\angle BAC.$  Find the perimeter of triangle $ABC.$\n\n\nFN10\tTwelve 1 by 1 squares form a rectangle, as shown. What is the total area of the shaded region? \n> ⚠️ *此题原含几何图形，图形无法在浏览器中显示。/ This problem originally contained a geometric figure which cannot be displa\n",
+  "stderr": "",
+  "execution_time_ms": 59
+}

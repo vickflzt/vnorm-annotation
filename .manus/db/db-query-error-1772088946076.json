@@ -1,0 +1,8 @@
+{
+  "query": "SELECT id, \"questionId\", category, answer, response FROM questions WHERE \"questionId\" IN ('FN05', 'FN01', 'FN02', 'FN03', 'FN04') ORDER BY \"questionId\";",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4EMZXV1BE262rJP.02474c5205e2 --database Yac4zPy3BEzfVh9QddoaLw --execute SELECT id, \"questionId\", category, answer, response FROM questions WHERE \"questionId\" IN ('FN05', 'FN01', 'FN02', 'FN03', 'FN04') ORDER BY \"questionId\";",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1146 (42S02) at line 1: Table 'yac4zpy3bezfvh9qddoalw.questions' doesn't exist"
+  ]
+}

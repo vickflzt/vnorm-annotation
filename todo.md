@@ -62,3 +62,5 @@
 - [ ] Expand question bank
 - [x] 翻题时自动滚动到页面顶部
 - [x] 单题超时改为弹窗警告，不自动提交，被试可继续作答
+- [x] 修复解题过程中裸 LaTeX 环境（align*, pmatrix 等）未渲染问题（已通过代码审查和 tokenizer 逻辑验证）
+- [x] 优化含图题占位提示文字 → 统一为纯英文："This problem originally contained a geometric diagram which has been omitted and cannot be displayed."

@@ -1,0 +1,25 @@
+{
+  "query": "SELECT itemId FROM question_bank WHERE question LIKE '%图示%' OR question LIKE '%geometric diagram%' OR question LIKE '%此题原含%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4EMZXV1BE262rJP.02474c5205e2 --database Yac4zPy3BEzfVh9QddoaLw --execute SELECT itemId FROM question_bank WHERE question LIKE '%图示%' OR question LIKE '%geometric diagram%' OR question LIKE '%此题原含%';",
+  "rows": [
+    {
+      "itemId": "TN07"
+    },
+    {
+      "itemId": "FN01"
+    },
+    {
+      "itemId": "FN04"
+    },
+    {
+      "itemId": "FN09"
+    },
+    {
+      "itemId": "FN10"
+    }
+  ],
+  "messages": [],
+  "stdout": "itemId\nTN07\nFN01\nFN04\nFN09\nFN10\n",
+  "stderr": "",
+  "execution_time_ms": 65
+}

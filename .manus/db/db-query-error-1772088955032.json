@@ -1,0 +1,8 @@
+{
+  "query": "SELECT question_id, category, answer, LEFT(response, 500) as response_preview FROM question_bank WHERE question_id IN ('FN05', 'FN01', 'FN02', 'FN03', 'FN04') ORDER BY question_id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4EMZXV1BE262rJP.02474c5205e2 --database Yac4zPy3BEzfVh9QddoaLw --execute SELECT question_id, category, answer, LEFT(response, 500) as response_preview FROM question_bank WHERE question_id IN ('FN05', 'FN01', 'FN02', 'FN03', 'FN04') ORDER BY question_id;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'question_id' in 'where clause'"
+  ]
+}
