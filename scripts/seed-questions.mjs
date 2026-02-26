@@ -11,7 +11,7 @@ import dotenv from "dotenv";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../.env") });
 
-const DATA_PATH = "/home/ubuntu/merged_dataset.json";
+const DATA_PATH = "/home/ubuntu/merged_dataset_fixed.json";
 
 async function main() {
   const db = await createConnection(process.env.DATABASE_URL);

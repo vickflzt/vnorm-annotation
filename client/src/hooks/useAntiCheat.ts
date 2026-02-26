@@ -16,7 +16,7 @@ interface UseAntiCheatOptions {
   participantId: string;
   questionIndex: number;
   itemId: string;
-  active: boolean; // only enforce when experiment is active
+  active: boolean;
   onTerminated: () => void;
 }
 
@@ -29,10 +29,19 @@ export function useAntiCheat({
 }: UseAntiCheatOptions) {
   const recordViolation = trpc.experiment.recordViolation.useMutation();
   const terminatedRef = useRef(false);
+  // Debounce: prevent rapid-fire duplicate events (e.g. blur + visibilitychange)
+  const lastViolationRef = useRef<{ type: string; ts: number }>({ type: "", ts: 0 });
 
   const handleViolation = useCallback(
     async (type: ViolationType) => {
       if (!active || terminatedRef.current) return;
+
+      // Debounce: ignore same violation within 1 second
+      const now = Date.now();
+      if (type === lastViolationRef.current.type && now - lastViolationRef.current.ts < 1000) {
+        return;
+      }
+      lastViolationRef.current = { type, ts: now };
 
       const result = await recordViolation.mutateAsync({
         participantId,
@@ -43,12 +52,30 @@ export function useAntiCheat({
 
       if (result.terminated && !terminatedRef.current) {
         terminatedRef.current = true;
-        onTerminated();
-      } else if (!result.terminated) {
-        // Warn for minor violations
-        toast.warning(`违规行为已记录 (${translateViolation(type)})`, {
-          description: "请勿进行此类操作，否则实验将被终止。",
-          duration: 3000,
+        // Show termination message briefly before calling onTerminated
+        toast.error("实验已终止 / Experiment Terminated", {
+          description: "检测到多次违规行为，实验已被强制终止。/ Multiple violations detected.",
+          duration: 2000,
+        });
+        setTimeout(() => onTerminated(), 1500);
+      } else if (result.isSerious && result.warningNumber) {
+        // Serious violation but not yet terminated: show numbered warning
+        const remaining = 3 - result.warningNumber;
+        toast.warning(
+          `⚠️ 严重警告 ${result.warningNumber}/2 / Warning ${result.warningNumber}/2`,
+          {
+            description:
+              remaining > 0
+                ? `检测到切屏/截图行为。再违规 ${remaining} 次将终止实验。\nTab switch / screenshot detected. ${remaining} more will terminate.`
+                : `最后警告！下次违规将立即终止实验。\nFinal warning! Next violation will terminate.`,
+            duration: 5000,
+          }
+        );
+      } else if (!result.isSerious) {
+        // Minor violation: brief toast
+        toast.warning(`违规提示 / Notice: ${translateViolation(type)}`, {
+          description: "请勿进行此类操作。/ Please avoid this action.",
+          duration: 2500,
         });
       }
     },
@@ -92,7 +119,7 @@ export function useAntiCheat({
         e.preventDefault();
         handleViolation("screenshot_attempt");
       }
-      // Disable common dev shortcuts
+      // Disable common shortcuts
       if (
         (e.ctrlKey || e.metaKey) &&
         (e.key === "u" || e.key === "s" || e.key === "a" || e.key === "c" || e.key === "v")

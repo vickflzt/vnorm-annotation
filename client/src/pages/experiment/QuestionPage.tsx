@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
-import { Slider } from "@/components/ui/slider";
 import { MathRenderer } from "@/components/MathRenderer";
 import { useAntiCheat } from "@/hooks/useAntiCheat";
 import { useCountdown } from "@/hooks/useCountdown";
@@ -32,6 +29,40 @@ interface QuestionPageProps {
 
 const QUESTION_TIME_LIMIT = 180; // 3 minutes
 
+// Helpfulness options per document spec
+const HELPFULNESS_OPTIONS = [
+  {
+    value: 1,
+    label: "1 — Very Unhelpful",
+    sublabel: "it confused or misled me",
+    sublabelZh: "它使我感到困惑或误导了我",
+  },
+  {
+    value: 2,
+    label: "2 — Somewhat Unhelpful",
+    sublabel: "it didn't help much",
+    sublabelZh: "它没有太大帮助",
+  },
+  {
+    value: 3,
+    label: "3 — Neutral",
+    sublabel: "it neither helped nor hurt",
+    sublabelZh: "它既没有帮助也没有妨碍",
+  },
+  {
+    value: 4,
+    label: "4 — Somewhat Helpful",
+    sublabel: "it provided useful information",
+    sublabelZh: "它提供了有用的信息",
+  },
+  {
+    value: 5,
+    label: "5 — Very Helpful",
+    sublabel: "it clearly supported my decision",
+    sublabelZh: "它明确支持了我的判断",
+  },
+] as const;
+
 export function QuestionPage({
   participantId,
   condition,
@@ -42,7 +73,7 @@ export function QuestionPage({
 }: QuestionPageProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [judgment, setJudgment] = useState<"correct" | "incorrect" | null>(null);
-  const [helpfulness, setHelpfulness] = useState<number>(3);
+  const [helpfulness, setHelpfulness] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [timerActive, setTimerActive] = useState(true);
   const startTimeRef = useRef<number>(Date.now());
@@ -56,7 +87,7 @@ export function QuestionPage({
   // Reset state when question changes
   useEffect(() => {
     setJudgment(null);
-    setHelpfulness(3);
+    setHelpfulness(null);
     setTimerActive(true);
     startTimeRef.current = Date.now();
   }, [currentIndex]);
@@ -66,6 +97,7 @@ export function QuestionPage({
     setTimerActive(false);
     toast.warning("时间到！已自动提交 / Time's up! Auto-submitted", { duration: 2000 });
     await doSubmit(null, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex, isSubmitting]);
 
   const { remaining, elapsedSeconds, reset: resetTimer } = useCountdown({
@@ -99,7 +131,7 @@ export function QuestionPage({
         responseCorrect,
         rtSeconds: Math.round(rt * 10) / 10,
         timedOut,
-        helpfulness: condition === "AJ" ? helpfulness : null,
+        helpfulness: condition === "AJ" ? (helpfulness ?? null) : null,
       });
 
       if (result.isCompleted) {
@@ -109,16 +141,20 @@ export function QuestionPage({
         setIsSubmitting(false);
         resetTimer();
       }
-    } catch (err) {
+    } catch {
       setIsSubmitting(false);
       setTimerActive(true);
-      toast.error("提交失败，请重试");
+      toast.error("提交失败，请重试 / Submission failed, please retry");
     }
   };
 
   const handleSubmit = () => {
     if (!judgment) {
-      toast.error("请先做出判断 / Please make a judgment first");
+      toast.error("请先做出正确/错误判断 / Please select Correct or Incorrect first");
+      return;
+    }
+    if (condition === "AJ" && helpfulness === null) {
+      toast.error("请评价解释的帮助程度 / Please rate the helpfulness of the justification");
       return;
     }
     doSubmit(judgment === "correct", false);
@@ -137,6 +173,10 @@ export function QuestionPage({
     const sec = Math.floor(s % 60);
     return `${m}:${sec.toString().padStart(2, "0")}`;
   };
+
+  // Determine if Next button should be enabled
+  const canSubmit =
+    !!judgment && (condition !== "AJ" || helpfulness !== null) && !isSubmitting;
 
   return (
     <div
@@ -201,15 +241,15 @@ export function QuestionPage({
           </div>
         </div>
 
-        {/* AJ: Full response */}
+        {/* AJ: Full response / justification */}
         {condition === "AJ" && currentQuestion.response && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="bg-blue-50 border-b border-blue-100 px-6 py-3">
               <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
-                Proposed Solution / 给出的解答过程
+                LLM Response / 给出的解答过程（Answer + Justification）
               </span>
             </div>
-            <div className="px-6 py-5 max-h-96 overflow-y-auto">
+            <div className="px-6 py-5 max-h-[480px] overflow-y-auto">
               <MathRenderer content={currentQuestion.response} />
             </div>
           </div>
@@ -220,7 +260,7 @@ export function QuestionPage({
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="bg-amber-50 border-b border-amber-100 px-6 py-3">
               <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">
-                Proposed Final Answer / 给出的最终答案
+                LLM Final Answer / 给出的最终答案
               </span>
             </div>
             <div className="px-6 py-4">
@@ -234,10 +274,13 @@ export function QuestionPage({
           </div>
         )}
 
-        {/* Judgment */}
+        {/* Judgment: Correct / Incorrect */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-          <p className="text-sm font-semibold text-slate-800 mb-4">
+          <p className="text-sm font-semibold text-slate-800 mb-1">
             Is the proposed answer correct? / 给出的答案是否正确？
+          </p>
+          <p className="text-xs text-slate-500 mb-4">
+            请根据页面所提供的信息做出判断 / Judge based only on the information shown above.
           </p>
           <RadioGroup
             value={judgment ?? ""}
@@ -253,7 +296,7 @@ export function QuestionPage({
             >
               <RadioGroupItem value="correct" id="correct" className="sr-only" />
               <CheckCircle2
-                className={`w-5 h-5 ${judgment === "correct" ? "text-emerald-600" : "text-slate-400"}`}
+                className={`w-5 h-5 shrink-0 ${judgment === "correct" ? "text-emerald-600" : "text-slate-400"}`}
               />
               <div>
                 <p className={`font-semibold text-sm ${judgment === "correct" ? "text-emerald-800" : "text-slate-700"}`}>
@@ -272,7 +315,7 @@ export function QuestionPage({
             >
               <RadioGroupItem value="incorrect" id="incorrect" className="sr-only" />
               <XCircle
-                className={`w-5 h-5 ${judgment === "incorrect" ? "text-red-600" : "text-slate-400"}`}
+                className={`w-5 h-5 shrink-0 ${judgment === "incorrect" ? "text-red-600" : "text-slate-400"}`}
               />
               <div>
                 <p className={`font-semibold text-sm ${judgment === "incorrect" ? "text-red-800" : "text-slate-700"}`}>
@@ -284,34 +327,57 @@ export function QuestionPage({
           </RadioGroup>
         </div>
 
-        {/* AJ: Helpfulness rating */}
+        {/* AJ only: Helpfulness rating (5 radio options per document spec) */}
         {condition === "AJ" && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
             <p className="text-sm font-semibold text-slate-800 mb-1">
               How helpful was the justification in making your decision?
             </p>
-            <p className="text-xs text-slate-500 mb-5">解释对您做出判断有多大帮助？</p>
+            <p className="text-xs text-slate-500 mb-5">
+              解释对您做出判断有多大帮助？（必填 / Required）
+            </p>
 
-            <div className="space-y-3">
-              <Slider
-                min={1}
-                max={5}
-                step={1}
-                value={[helpfulness]}
-                onValueChange={([v]) => setHelpfulness(v)}
-                className="w-full"
-              />
-              <div className="flex justify-between text-xs text-slate-500">
-                <span>1 — Very Unhelpful<br/>非常无帮助</span>
-                <span className="text-center">3 — Neutral<br/>中立</span>
-                <span className="text-right">5 — Very Helpful<br/>非常有帮助</span>
-              </div>
-              <div className="text-center">
-                <span className="inline-block bg-indigo-100 text-indigo-800 text-sm font-bold px-3 py-1 rounded-full">
-                  {helpfulness} — {helpfulnessLabel(helpfulness)}
-                </span>
-              </div>
-            </div>
+            <RadioGroup
+              value={helpfulness !== null ? String(helpfulness) : ""}
+              onValueChange={(v) => setHelpfulness(Number(v))}
+              className="space-y-2"
+            >
+              {HELPFULNESS_OPTIONS.map((opt) => (
+                <label
+                  key={opt.value}
+                  className={`flex items-start gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
+                    helpfulness === opt.value
+                      ? "border-indigo-500 bg-indigo-50"
+                      : "border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/40"
+                  }`}
+                >
+                  <RadioGroupItem
+                    value={String(opt.value)}
+                    id={`help-${opt.value}`}
+                    className="mt-0.5 shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <p
+                      className={`text-sm font-semibold ${
+                        helpfulness === opt.value ? "text-indigo-800" : "text-slate-700"
+                      }`}
+                    >
+                      {opt.label}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {opt.sublabel} · {opt.sublabelZh}
+                    </p>
+                  </div>
+                </label>
+              ))}
+            </RadioGroup>
+
+            {helpfulness === null && (
+              <p className="mt-3 text-xs text-amber-600 flex items-center gap-1">
+                <AlertTriangle className="w-3.5 h-3.5" />
+                请选择一个选项后才能进入下一题 / Please select an option to proceed.
+              </p>
+            )}
           </div>
         )}
 
@@ -319,12 +385,12 @@ export function QuestionPage({
         <div className="flex justify-end pb-8">
           <Button
             onClick={handleSubmit}
-            disabled={!judgment || isSubmitting}
+            disabled={!canSubmit}
             size="lg"
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-10 min-w-40"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-10 min-w-40 disabled:opacity-50"
           >
             {isSubmitting
-              ? "提交中..."
+              ? "提交中... / Submitting..."
               : isLastQuestion
               ? "完成实验 / Finish"
               : "下一题 / Next →"}
@@ -333,15 +399,4 @@ export function QuestionPage({
       </div>
     </div>
   );
-}
-
-function helpfulnessLabel(v: number): string {
-  const labels: Record<number, string> = {
-    1: "Very Unhelpful",
-    2: "Somewhat Unhelpful",
-    3: "Neutral",
-    4: "Somewhat Helpful",
-    5: "Very Helpful",
-  };
-  return labels[v] ?? "";
 }

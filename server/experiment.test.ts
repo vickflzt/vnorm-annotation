@@ -128,19 +128,37 @@ describe("experiment.submitResponse", () => {
 });
 
 describe("experiment.recordViolation", () => {
-  it("terminates session on serious violation", async () => {
+  it("terminates session after 3 serious violations", async () => {
     const caller = appRouter.createCaller(createPublicContext());
     const { participantId } = await caller.experiment.createSession({});
     await caller.experiment.giveConsent({ participantId });
     await caller.experiment.startExperiment({ participantId });
 
-    const result = await caller.experiment.recordViolation({
+    // First violation: warning only
+    const r1 = await caller.experiment.recordViolation({
       participantId,
       violationType: "tab_switch",
       questionIndex: 0,
     });
+    expect(r1.terminated).toBe(false);
+    expect(r1.warningNumber).toBe(1);
 
-    expect(result.terminated).toBe(true);
+    // Second violation: warning only
+    const r2 = await caller.experiment.recordViolation({
+      participantId,
+      violationType: "tab_switch",
+      questionIndex: 0,
+    });
+    expect(r2.terminated).toBe(false);
+    expect(r2.warningNumber).toBe(2);
+
+    // Third violation: terminate
+    const r3 = await caller.experiment.recordViolation({
+      participantId,
+      violationType: "tab_switch",
+      questionIndex: 0,
+    });
+    expect(r3.terminated).toBe(true);
     const session = await caller.experiment.getSession({ participantId });
     expect(session.status).toBe("terminated");
   });

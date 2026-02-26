@@ -1,7 +1,10 @@
-import { and, asc, desc, eq, lt, sql } from "drizzle-orm";
+import {
+  and, asc, desc, eq, lt, sql
+} from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
+  experimentConfig,
   itemResponses,
   participantSessions,
   questionBank,
@@ -283,6 +286,64 @@ export async function getAllViolations() {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(violationEvents).orderBy(desc(violationEvents.occurredAt));
+}
+
+// ─── Experiment Config ───────────────────────────────────────────────────────
+export async function getExperimentConfig() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(experimentConfig).orderBy(asc(experimentConfig.condition));
+}
+
+export async function getExperimentConfigByToken(token: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db
+    .select()
+    .from(experimentConfig)
+    .where(eq(experimentConfig.inviteToken, token))
+    .limit(1);
+  return result[0];
+}
+
+export async function upsertExperimentConfig(
+  condition: "AO" | "AJ",
+  data: { targetParticipants?: number; inviteToken?: string; isOpen?: boolean }
+) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const existing = await db
+    .select()
+    .from(experimentConfig)
+    .where(eq(experimentConfig.condition, condition))
+    .limit(1);
+  if (existing.length === 0) {
+    await db.insert(experimentConfig).values({
+      condition,
+      targetParticipants: data.targetParticipants ?? 30,
+      inviteToken: data.inviteToken ?? "",
+      isOpen: data.isOpen ?? true,
+    });
+  } else {
+    await db
+      .update(experimentConfig)
+      .set(data)
+      .where(eq(experimentConfig.condition, condition));
+  }
+}
+
+export async function getParticipantCountByCondition() {
+  const db = await getDb();
+  if (!db) return { AO: 0, AJ: 0 };
+  const rows = await db
+    .select({ condition: participantSessions.condition, count: sql<number>`COUNT(*)` })
+    .from(participantSessions)
+    .groupBy(participantSessions.condition);
+  const result = { AO: 0, AJ: 0 };
+  for (const row of rows) {
+    result[row.condition] = Number(row.count);
+  }
+  return result;
 }
 
 // ─── Dashboard stats ──────────────────────────────────────────────────────────

@@ -28,7 +28,8 @@
 - [x] Disable copy/paste/right-click/text selection
 - [x] Detect tab/window blur (visibility change)
 - [x] Detect screenshot attempt (PrintScreen key)
-- [x] Auto-terminate session on serious violation (tab_switch, screenshot_attempt)
+- [x] Auto-terminate session after 3 serious violations (tab_switch, screenshot_attempt)
+- [x] Warn on 1st and 2nd serious violation (2 chances before termination)
 - [x] Warn on minor violation (right_click, devtools_open)
 - [x] Record all violation events to DB
 
@@ -48,6 +49,12 @@
 
 ## Tests
 - [x] 13 vitest tests passing (createSession, getSession, consent, start, submit, violations, dashboard)
+- [x] Fix math formula rendering (LaTeX format unified to $$...$$)
+- [x] Helpfulness changed to 5-option radio (no default, must select to proceed)
+- [x] Admin backend at /admin (separate link, role-gated)
+- [x] Experiment config management (quota per condition, open/close toggle)
+- [x] Per-condition invite tokens + share links
+- [x] Token validation on landing page (auto-assign condition)
 
 ## Optional / Future
 - [ ] Resume from last position (mid-session recovery)

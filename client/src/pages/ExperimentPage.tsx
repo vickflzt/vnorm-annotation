@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { ConsentPage } from "./experiment/ConsentPage";
 import { InstructionsPage } from "./experiment/InstructionsPage";
 import { QuestionPage } from "./experiment/QuestionPage";
 import { CompletionPage } from "./experiment/CompletionPage";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 
 type Stage = "landing" | "loading" | "consent" | "instructions" | "active" | "completed" | "terminated";
 
@@ -13,9 +13,31 @@ export default function ExperimentPage() {
   const [stage, setStage] = useState<Stage>("landing");
   const [participantId, setParticipantId] = useState<string | null>(null);
   const [condition, setCondition] = useState<"AO" | "AJ" | null>(null);
+  const [tokenError, setTokenError] = useState<string | null>(null);
+
+  // Extract invite token from URL query string (?token=xxx)
+  const urlParams = new URLSearchParams(window.location.search);
+  const inviteToken = urlParams.get("token") ?? undefined;
+
+  // Validate token on mount if present
+  const { data: tokenData, error: tokenValidationError } = trpc.experiment.validateToken.useQuery(
+    { token: inviteToken! },
+    { enabled: !!inviteToken, retry: false }
+  );
+
+  useEffect(() => {
+    if (tokenValidationError) {
+      const msg = tokenValidationError.message;
+      setTokenError(
+        msg.includes("closed")
+          ? "该实验组当前已关闭招募，请联系实验负责人。\nThis experiment group is currently closed."
+          : "邀请链接无效或已过期。\nInvalid or expired invite link."
+      );
+    }
+  }, [tokenValidationError]);
 
   const createSession = trpc.experiment.createSession.useMutation();
-  const { data: sessionData, refetch: refetchSession } = trpc.experiment.getSession.useQuery(
+  const { data: sessionData } = trpc.experiment.getSession.useQuery(
     { participantId: participantId! },
     {
       enabled: !!participantId && stage !== "landing" && stage !== "loading",
@@ -26,12 +48,14 @@ export default function ExperimentPage() {
   const handleStart = async () => {
     setStage("loading");
     try {
-      const result = await createSession.mutateAsync({});
+      const result = await createSession.mutateAsync({ inviteToken });
       setParticipantId(result.participantId);
       setCondition(result.condition);
       setStage("consent");
-    } catch {
+    } catch (e: unknown) {
       setStage("landing");
+      const msg = e instanceof Error ? e.message : "未知错误";
+      setTokenError(`创建会话失败：${msg}`);
     }
   };
 
@@ -40,12 +64,34 @@ export default function ExperimentPage() {
   const handleCompleted = () => setStage("completed");
   const handleTerminated = () => setStage("terminated");
 
+  // Token error state
+  if (tokenError) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl border border-red-200 p-8 text-center shadow-sm space-y-4">
+          <AlertTriangle className="w-10 h-10 text-red-400 mx-auto" />
+          <h2 className="text-lg font-bold text-slate-800">无法访问实验</h2>
+          <p className="text-sm text-slate-600 whitespace-pre-line">{tokenError}</p>
+        </div>
+      </div>
+    );
+  }
+
   // Landing page
   if (stage === "landing") {
+    // Show loading while validating token
+    if (inviteToken && !tokenData && !tokenValidationError) {
+      return (
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-slate-50 flex items-center justify-center p-4">
         <div className="max-w-2xl w-full text-center space-y-8">
-          {/* Logo / Badge */}
+          {/* Logo */}
           <div className="flex justify-center">
             <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
               <span className="text-white text-2xl font-bold">V</span>
@@ -56,9 +102,7 @@ export default function ExperimentPage() {
             <h1 className="text-4xl font-bold text-slate-900 mb-3">
               V-Norm Annotation Study
             </h1>
-            <p className="text-lg text-slate-600 mb-2">
-              数学答案判断实验
-            </p>
+            <p className="text-lg text-slate-600 mb-2">数学答案判断实验</p>
             <p className="text-sm text-slate-500 max-w-lg mx-auto leading-relaxed">
               本研究旨在了解人类如何判断 AI 生成的数学答案是否正确。参与本实验约需 45–50 分钟。
             </p>
@@ -67,19 +111,27 @@ export default function ExperimentPage() {
             </p>
           </div>
 
+          {/* Condition badge (if token-assigned) */}
+          {tokenData && (
+            <div className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-200 rounded-full px-4 py-1.5 text-sm text-indigo-700 font-medium">
+              <span className="w-2 h-2 rounded-full bg-indigo-500 inline-block" />
+              实验组：{tokenData.condition === "AO" ? "AO（仅答案）" : "AJ（答案 + 推理过程）"}
+            </div>
+          )}
+
           {/* Info cards */}
           <div className="grid grid-cols-3 gap-4 text-left">
             <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
               <p className="text-2xl font-bold text-indigo-600 mb-1">16</p>
-              <p className="text-xs text-slate-600">道数学题<br/>Math questions</p>
+              <p className="text-xs text-slate-600">道数学题<br />Math questions</p>
             </div>
             <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
               <p className="text-2xl font-bold text-indigo-600 mb-1">3 min</p>
-              <p className="text-xs text-slate-600">每题时限<br/>Per question</p>
+              <p className="text-xs text-slate-600">每题时限<br />Per question</p>
             </div>
             <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
               <p className="text-2xl font-bold text-indigo-600 mb-1">匿名</p>
-              <p className="text-xs text-slate-600">数据保护<br/>Anonymous</p>
+              <p className="text-xs text-slate-600">数据保护<br />Anonymous</p>
             </div>
           </div>
 
@@ -134,7 +186,9 @@ export default function ExperimentPage() {
   }
 
   if (stage === "active" && participantId && condition && sessionData) {
-    const questions = (sessionData.questions ?? []).filter(Boolean) as NonNullable<typeof sessionData.questions[0]>[];
+    const questions = (sessionData.questions ?? []).filter(Boolean) as NonNullable<
+      (typeof sessionData.questions)[0]
+    >[];
     return (
       <QuestionPage
         participantId={participantId}

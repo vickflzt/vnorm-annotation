@@ -107,3 +107,17 @@ export const violationEvents = mysqlTable("violation_events", {
 });
 
 export type ViolationEvent = typeof violationEvents.$inferSelect;
+
+// ─── Experiment Config ────────────────────────────────────────────────────────
+// Stores per-condition quota and invite tokens
+export const experimentConfig = mysqlTable("experiment_config", {
+  id: int("id").autoincrement().primaryKey(),
+  condition: mysqlEnum("condition", ["AO", "AJ"]).notNull().unique(),
+  targetParticipants: int("targetParticipants").default(30).notNull(),
+  inviteToken: varchar("inviteToken", { length: 64 }).notNull().unique(), // secret token for share link
+  isOpen: boolean("isOpen").default(true).notNull(), // whether this condition is accepting new participants
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ExperimentConfig = typeof experimentConfig.$inferSelect;

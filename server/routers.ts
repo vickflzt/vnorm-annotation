@@ -10,7 +10,10 @@ import {
   getAllResponses,
   getAllSessions,
   getAllViolations,
+  getExperimentConfig,
+  getExperimentConfigByToken,
   getItemCoverageStats,
+  getParticipantCountByCondition,
   getQuestionsByItemIds,
   getResponsesByParticipant,
   getSession,
@@ -20,9 +23,9 @@ import {
   saveViolation,
   sampleQuestionsForSession,
   updateSessionStatus,
+  upsertExperimentConfig,
 } from "./db";
 import { ENV } from "./_core/env";
-
 // ─── Admin guard ──────────────────────────────────────────────────────────────
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") {
@@ -34,14 +37,38 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
 // ─── Experiment router ────────────────────────────────────────────────────────
 const experimentRouter = router({
   /**
+   * Validate an invite token and return the associated condition.
+   * Used when a participant arrives via a share link.
+   */
+  validateToken: publicProcedure
+    .input(z.object({ token: z.string() }))
+    .query(async ({ input }) => {
+      const config = await getExperimentConfigByToken(input.token);
+      if (!config) throw new TRPCError({ code: "NOT_FOUND", message: "Invalid invite link" });
+      if (!config.isOpen) throw new TRPCError({ code: "FORBIDDEN", message: "This experiment group is currently closed" });
+      return { condition: config.condition, isOpen: config.isOpen };
+    }),
+
+  /**
    * Create a new anonymous participant session.
    * Randomly assigns AO or AJ condition, samples 15 MATH500 + 1 GSM-CHECK.
+   * If inviteToken is provided, assigns the token's condition.
    */
   createSession: publicProcedure
-    .input(z.object({ preferredCondition: z.enum(["AO", "AJ"]).optional() }))
+    .input(z.object({
+      preferredCondition: z.enum(["AO", "AJ"]).optional(),
+      inviteToken: z.string().optional(),
+    }))
     .mutation(async ({ input }) => {
-      const condition: "AO" | "AJ" =
-        input.preferredCondition ?? (Math.random() < 0.5 ? "AO" : "AJ");
+      let condition: "AO" | "AJ";
+      if (input.inviteToken) {
+        const config = await getExperimentConfigByToken(input.inviteToken);
+        if (!config) throw new TRPCError({ code: "NOT_FOUND", message: "Invalid invite token" });
+        if (!config.isOpen) throw new TRPCError({ code: "FORBIDDEN", message: "This group is closed" });
+        condition = config.condition;
+      } else {
+        condition = input.preferredCondition ?? (Math.random() < 0.5 ? "AO" : "AJ");
+      }
 
       const mathItems = await sampleQuestionsForSession(condition);
       // Insert GSM-CHECK at position 7 (0-indexed), i.e. 8th question
@@ -225,11 +252,15 @@ const experimentRouter = router({
         return { terminated: session.status === "terminated" };
       }
 
-      // Terminate on first serious violation (tab switch, visibility hidden, screenshot)
+      // Terminate after 3 serious violations (tab switch, visibility hidden, screenshot)
+      // First 2 serious violations: warn. 3rd: terminate.
       const seriousViolations = ["tab_switch", "visibility_hidden", "screenshot_attempt"];
       const isSerious = seriousViolations.includes(input.violationType);
-      const newCount = session.violationCount + 1;
-      const shouldTerminate = isSerious;
+      // Count only serious violations
+      const previousSeriousCount = session.violationCount ?? 0;
+      const newSeriousCount = isSerious ? previousSeriousCount + 1 : previousSeriousCount;
+      const newCount = (session.violationCount ?? 0) + 1;
+      const shouldTerminate = isSerious && newSeriousCount >= 3;
 
       await saveViolation({
         participantId: input.participantId,
@@ -249,7 +280,14 @@ const experimentRouter = router({
         });
       }
 
-      return { terminated: shouldTerminate, violationCount: newCount };
+      return {
+        terminated: shouldTerminate,
+        violationCount: newCount,
+        seriousCount: newSeriousCount,
+        isSerious,
+        // warningNumber: 1 or 2 means warn, 3 means terminate
+        warningNumber: isSerious && !shouldTerminate ? newSeriousCount : null,
+      };
     }),
 
   /**
@@ -291,6 +329,40 @@ const dashboardRouter = router({
     ]);
     return { sessions, responses, violations, exportedAt: new Date() };
   }),
+
+  // ── Experiment Config Management ──────────────────────────────────────────
+  getExperimentConfig: adminProcedure.query(async () => {
+    const configs = await getExperimentConfig();
+    const counts = await getParticipantCountByCondition();
+    return configs.map((c) => ({
+      ...c,
+      currentParticipants: counts[c.condition] ?? 0,
+    }));
+  }),
+
+  updateConditionConfig: adminProcedure
+    .input(
+      z.object({
+        condition: z.enum(["AO", "AJ"]),
+        targetParticipants: z.number().int().min(1).max(500).optional(),
+        isOpen: z.boolean().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      await upsertExperimentConfig(input.condition, {
+        targetParticipants: input.targetParticipants,
+        isOpen: input.isOpen,
+      });
+      return { ok: true };
+    }),
+
+  regenerateToken: adminProcedure
+    .input(z.object({ condition: z.enum(["AO", "AJ"]) }))
+    .mutation(async ({ input }) => {
+      const newToken = nanoid(24);
+      await upsertExperimentConfig(input.condition, { inviteToken: newToken });
+      return { token: newToken };
+    }),
 
   exportCSV: adminProcedure.query(async () => {
     const responses = await getAllResponses();
