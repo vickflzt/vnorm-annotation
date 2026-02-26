@@ -1,15 +1,11 @@
 /**
  * MathRenderer — renders markdown content with embedded LaTeX math.
  *
- * Strategy: parse the content ourselves, split on $...$ / $$...$$ delimiters,
- * and render each math segment with katex.renderToString() directly.
- * This avoids the remark-math / rehype-katex plugin chain which has ESM
- * compatibility issues in Vite + React 19.
- *
- * Supported formats (after fix_latex_format.py normalisation):
+ * Uses KaTeX renderToString directly (avoids remark-math/rehype-katex ESM issues).
+ * Custom tokeniser handles:
  *   $$...$$   block math
- *   $...$     inline math
- *   bare LaTeX (no delimiters) — wrapped automatically for answer fields
+ *   $...$     inline math  (correctly skips \$ escaped dollar signs)
+ *   bare LaTeX (isMathOnly mode) — auto-wrapped
  */
 
 import katex from "katex";
@@ -31,8 +27,28 @@ type Token =
   | { type: "inline-math"; value: string };
 
 /**
+ * Find the next unescaped occurrence of `needle` in `src` starting at `from`.
+ * A `$` preceded by `\` is considered escaped and skipped.
+ */
+function findUnescaped(src: string, needle: string, from: number): number {
+  let i = from;
+  while (i <= src.length - needle.length) {
+    if (src.slice(i, i + needle.length) === needle) {
+      // Check if preceded by backslash
+      if (needle === "$" && i > 0 && src[i - 1] === "\\") {
+        i++;
+        continue;
+      }
+      return i;
+    }
+    i++;
+  }
+  return -1;
+}
+
+/**
  * Split a markdown string into alternating text / math tokens.
- * Handles $$...$$ (block) and $...$ (inline) delimiters.
+ * Correctly handles \$ (escaped dollar sign in text).
  */
 function tokenise(src: string): Token[] {
   const tokens: Token[] = [];
@@ -44,18 +60,25 @@ function tokenise(src: string): Token[] {
   };
 
   while (i < src.length) {
+    // Skip escaped dollar signs \$
+    if (src[i] === "\\" && src[i + 1] === "$") {
+      i += 2;
+      continue;
+    }
+
     // Block math $$...$$
     if (src[i] === "$" && src[i + 1] === "$") {
       flush(i);
-      const close = src.indexOf("$$", i + 2);
+      const close = findUnescaped(src, "$$", i + 2);
       if (close === -1) {
-        // No closing delimiter — treat rest as text
+        // No closing — treat rest as text
         tokens.push({ type: "text", value: src.slice(i) });
         i = src.length;
         textStart = i;
         break;
       }
-      tokens.push({ type: "block-math", value: src.slice(i + 2, close) });
+      const mathContent = src.slice(i + 2, close);
+      tokens.push({ type: "block-math", value: mathContent });
       i = close + 2;
       textStart = i;
       continue;
@@ -63,12 +86,34 @@ function tokenise(src: string): Token[] {
 
     // Inline math $...$
     if (src[i] === "$") {
-      // Make sure it's not a lone $ (currency) — require a closing $ on same "line"
-      const close = src.indexOf("$", i + 1);
-      if (close !== -1 && !src.slice(i + 1, close).includes("\n\n")) {
+      // Find the closing $ (unescaped, not immediately another $)
+      let j = i + 1;
+      let found = -1;
+      while (j < src.length) {
+        if (src[j] === "\\" && src[j + 1] === "$") {
+          j += 2; // skip escaped $
+          continue;
+        }
+        if (src[j] === "$") {
+          // Don't match $$ as closing inline
+          if (src[j + 1] === "$") {
+            // This is a block start, abort inline search
+            break;
+          }
+          found = j;
+          break;
+        }
+        // Don't span blank lines (paragraph boundary)
+        if (src[j] === "\n" && src[j + 1] === "\n") {
+          break;
+        }
+        j++;
+      }
+
+      if (found !== -1) {
         flush(i);
-        tokens.push({ type: "inline-math", value: src.slice(i + 1, close) });
-        i = close + 1;
+        tokens.push({ type: "inline-math", value: src.slice(i + 1, found) });
+        i = found + 1;
         textStart = i;
         continue;
       }
@@ -85,39 +130,37 @@ function tokenise(src: string): Token[] {
 
 function renderMath(latex: string, displayMode: boolean): string {
   try {
-    return katex.renderToString(latex.trim(), {
+    // Replace \$ (escaped dollar in LaTeX) with \text{\$} which KaTeX can render
+    const normalized = latex.replace(/\\\$/g, "\\text{\\$}");
+    return katex.renderToString(normalized.trim(), {
       displayMode,
       throwOnError: false,
+      errorColor: "#c0392b",
       output: "html",
       trust: false,
+      // Allow unknown commands to render as text rather than throw
+      strict: "ignore",
     });
   } catch {
-    return `<span class="katex-error" style="color:#c0392b">${latex}</span>`;
+    // Last-resort fallback: show the raw LaTeX in a styled span
+    const escaped = latex.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return `<span class="katex-fallback font-mono text-sm bg-amber-50 px-1 rounded">${escaped}</span>`;
   }
 }
 
-// ─── Simple Markdown → HTML (no external deps) ───────────────────────────────
+// ─── Simple Markdown → HTML ───────────────────────────────────────────────────
 
-/**
- * Very lightweight markdown processor for the text segments.
- * Handles: **bold**, *italic*, `code`, line breaks, blank-line paragraphs.
- * Does NOT handle headings / tables (not needed for this dataset).
- */
 function markdownTextToHtml(text: string): string {
-  return text
-    // Escape HTML entities first
+  // Restore escaped dollar signs before HTML escaping
+  const restored = text.replace(/\\\$/g, "$");
+  return restored
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    // Bold **...**
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    // Italic *...*
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    // Inline code `...`
     .replace(/`([^`]+)`/g, '<code class="bg-slate-100 rounded px-1 text-sm font-mono">$1</code>')
-    // Blank line → paragraph break
     .replace(/\n{2,}/g, "</p><p>")
-    // Single newline → <br>
     .replace(/\n/g, "<br>");
 }
 
@@ -127,16 +170,14 @@ export function MathRenderer({ content, className = "", isMathOnly = false }: Ma
   const html = useMemo(() => {
     if (!content) return "";
 
-    // isMathOnly: the whole string is a LaTeX expression (answer fields).
-    // If it already contains $, render normally; otherwise wrap it.
     if (isMathOnly) {
       const trimmed = content.trim();
       // If it contains $ delimiters, parse normally
       if (trimmed.includes("$")) {
         return buildHtml(trimmed);
       }
-      // Otherwise treat as inline math if no newlines, block math if multiline
-      const isMultiline = trimmed.includes("\n") || trimmed.length > 60;
+      // Otherwise treat as math expression directly
+      const isMultiline = trimmed.includes("\n") || trimmed.length > 80;
       return renderMath(trimmed, isMultiline);
     }
 
@@ -158,21 +199,16 @@ function buildHtml(src: string): string {
 
   for (const tok of tokens) {
     if (tok.type === "block-math") {
-      // Close current paragraph, render block, open new paragraph
-      out += `</p><div class="katex-block my-3 overflow-x-auto">${renderMath(tok.value, true)}</div><p>`;
+      out += `</p><div class="katex-block my-3 overflow-x-auto text-center">${renderMath(tok.value, true)}</div><p>`;
     } else if (tok.type === "inline-math") {
       out += renderMath(tok.value, false);
     } else {
-      // Text: apply lightweight markdown
       out += markdownTextToHtml(tok.value);
     }
   }
 
   out += "</p>";
-
-  // Clean up empty paragraphs
   out = out.replace(/<p>\s*<\/p>/g, "");
-  // Unwrap lone paragraph wrappers around block elements
   out = out.replace(/<p>(<div[^>]*>)/g, "$1").replace(/(<\/div>)<\/p>/g, "$1");
 
   return out;

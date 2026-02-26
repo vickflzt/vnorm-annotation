@@ -99,7 +99,6 @@ export async function sampleQuestionsForSession(
 ): Promise<string[]> {
   const db = await getDb();
   if (!db) return [];
-
   // Get all non-GSM questions that still need annotations
   const countCol = condition === "AO" ? questionBank.countAO : questionBank.countAJ;
   const rows = await db
@@ -112,28 +111,47 @@ export async function sampleQuestionsForSession(
       )
     )
     .orderBy(asc(countCol));
-
-  // Shuffle within same-count groups, take 15
+  // Shuffle within same-count groups
   const shuffled = rows.sort((a, b) => {
     const ca = condition === "AO" ? a.countAO : a.countAJ;
     const cb = condition === "AO" ? b.countAO : b.countAJ;
     if (ca !== cb) return ca - cb;
     return Math.random() - 0.5;
   });
-
-  const selected = shuffled.slice(0, 15).map((q) => q.itemId);
-
-  // If quota is full for all items, fall back to random 15 from all MATH500
-  if (selected.length < 15) {
+  // ── Deduplication: ensure no two items share the same question text ──
+  // (Some items in the bank are different V-Norm conditions of the same math
+  //  problem, e.g. TP05 and FP02 ask the same question with different answers.)
+  const selected: typeof shuffled = [];
+  const seenQuestions = new Set<string>();
+  for (const item of shuffled) {
+    const qKey = (item.question ?? "").trim().slice(0, 200); // use first 200 chars as key
+    if (!seenQuestions.has(qKey)) {
+      seenQuestions.add(qKey);
+      selected.push(item);
+    }
+    if (selected.length === 15) break;
+  }
+  const selectedIds = selected.map((q) => q.itemId);
+  // If quota is full for all items, fall back to random 15 from all MATH500 (with dedup)
+  if (selectedIds.length < 15) {
     const all = await db
-      .select({ itemId: questionBank.itemId })
+      .select({ itemId: questionBank.itemId, question: questionBank.question })
       .from(questionBank)
       .where(sql`${questionBank.category} != 'GSM-CHECK'`);
-    const allIds = all.map((q) => q.itemId).sort(() => Math.random() - 0.5);
-    return allIds.slice(0, 15);
+    const allShuffled = all.sort(() => Math.random() - 0.5);
+    const fallback: string[] = [];
+    const fallbackSeen = new Set<string>();
+    for (const item of allShuffled) {
+      const qKey = (item.question ?? "").trim().slice(0, 200);
+      if (!fallbackSeen.has(qKey)) {
+        fallbackSeen.add(qKey);
+        fallback.push(item.itemId);
+      }
+      if (fallback.length === 15) break;
+    }
+    return fallback;
   }
-
-  return selected;
+  return selectedIds;
 }
 
 export async function incrementQuestionCount(
