@@ -1,0 +1,17 @@
+{
+  "query": "SELECT itemId, LEFT(question, 120) as question_preview, LEFT(response, 200) as response_preview FROM question_bank WHERE itemId = 'FN05';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4EMZXV1BE262rJP.02474c5205e2 --database Yac4zPy3BEzfVh9QddoaLw --execute SELECT itemId, LEFT(question, 120) as question_preview, LEFT(response, 200) as response_preview FROM question_bank WHERE itemId = 'FN05';",
+  "rows": [
+    {
+      "itemId": "FN05",
+      "question_preview": "The points $O,$ $A,$ and $B$ satisfy $\\overrightarrow{OA} = \\begin{pmatrix} 1 \\\\ 2 \\\\ 3 \\end{pmatrix}$ and $\\overrightar",
+      "response_preview": " We can use the formula for the area of a triangle in terms of the cross product of two vectors to solve this problem."
+    }
+  ],
+  "messages": [
+    "If $A$ and $B$ are the endpoints of a line segment, then the area of the triangle"
+  ],
+  "stdout": "itemId\tquestion_preview\tresponse_preview\nFN05\tThe points $O,$ $A,$ and $B$ satisfy $\\overrightarrow{OA} = \\begin{pmatrix} 1 \\\\ 2 \\\\ 3 \\end{pmatrix}$ and $\\overrightar\t We can use the formula for the area of a triangle in terms of the cross product of two vectors to solve this problem.\nIf $A$ and $B$ are the endpoints of a line segment, then the area of the triangle\n",
+  "stderr": "",
+  "execution_time_ms": 54
+}

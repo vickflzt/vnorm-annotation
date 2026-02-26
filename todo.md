@@ -80,3 +80,4 @@
 - [x] 修复 MathRenderer：response 中多行块级公式（$$\n\begin{vmatrix}...\end{vmatrix}\n$$）未正确渲染（修复多行块级公式收集逻辑：只有独立的 $$ 行才结束块）
 - [x] 新增被试编号输入功能：知情同意后插入编号输入页面，保存到数据库 participantCode 字段，CSV/JSON 导出包含该字段，15/15 测试通过
 - [x] 修复 LLM Response 区域行内/块级公式过长溢出容器、无法横向滚动的问题（CSS min-w-0 + overflow-x:auto + overflow-wrap:break-word）
+- [x] 修复 FN05 渲染错误：直接修正数据库中 question（向量改为行内 $...$ 格式）和 response（align* 用 $$ 包裹，换行符修正）

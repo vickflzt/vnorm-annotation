@@ -1,0 +1,14 @@
+{
+  "query": "SELECT itemId, question FROM question_bank WHERE itemId = 'FN05';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4EMZXV1BE262rJP.02474c5205e2 --database Yac4zPy3BEzfVh9QddoaLw --execute SELECT itemId, question FROM question_bank WHERE itemId = 'FN05';",
+  "rows": [
+    {
+      "itemId": "FN05",
+      "question": "The points $O,$ $A,$ and $B$ satisfy $\\overrightarrow{OA} = \\begin{pmatrix} 1 \\\\ 2 \\\\ 3 \\end{pmatrix}$ and $\\overrightarrow{OB} = \\begin{pmatrix} -3 \\\\ -2 \\\\ 1 \\end{pmatrix}.$  Find the area of triangle $OAB.$"
+    }
+  ],
+  "messages": [],
+  "stdout": "itemId\tquestion\nFN05\tThe points $O,$ $A,$ and $B$ satisfy $\\overrightarrow{OA} = \\begin{pmatrix} 1 \\\\ 2 \\\\ 3 \\end{pmatrix}$ and $\\overrightarrow{OB} = \\begin{pmatrix} -3 \\\\ -2 \\\\ 1 \\end{pmatrix}.$  Find the area of triangle $OAB.$\n",
+  "stderr": "",
+  "execution_time_ms": 63
+}
