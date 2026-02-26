@@ -64,6 +64,7 @@ export const participantSessions = mysqlTable("participant_sessions", {
   completedAt: timestamp("completedAt"),
   totalTimeSeconds: float("totalTimeSeconds"),
   passedAttentionCheck: boolean("passedAttentionCheck"),
+  participantCode: varchar("participantCode", { length: 64 }), // manually assigned participant code
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

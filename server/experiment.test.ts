@@ -101,6 +101,30 @@ describe("experiment.giveConsent + startExperiment", () => {
   });
 });
 
+describe("experiment.submitParticipantCode", () => {
+  it("saves participant code and returns ok", async () => {
+    const caller = appRouter.createCaller(createPublicContext());
+    const { participantId } = await caller.experiment.createSession({});
+    await caller.experiment.giveConsent({ participantId });
+    const result = await caller.experiment.submitParticipantCode({
+      participantId,
+      participantCode: "P042",
+    });
+    expect(result.ok).toBe(true);
+    // Verify code is stored in the session
+    const session = await caller.experiment.getSession({ participantId });
+    expect(session.participantCode).toBe("P042");
+  });
+
+  it("rejects empty participant code", async () => {
+    const caller = appRouter.createCaller(createPublicContext());
+    const { participantId } = await caller.experiment.createSession({});
+    await expect(
+      caller.experiment.submitParticipantCode({ participantId, participantCode: "" })
+    ).rejects.toThrow();
+  });
+});
+
 describe("experiment.submitResponse", () => {
   it("advances currentIndex after submission", async () => {
     const caller = appRouter.createCaller(createPublicContext());
@@ -198,10 +222,11 @@ describe("dashboard (admin only)", () => {
     expect(coverage.length).toBeGreaterThan(0);
   });
 
-  it("exports CSV with header row", async () => {
+  it("exports CSV with header row including participantCode", async () => {
     const caller = appRouter.createCaller(createAdminContext());
     const csv = await caller.dashboard.exportCSV();
     expect(csv).toContain("participantId");
+    expect(csv).toContain("participantCode");
     expect(csv).toContain("condition");
     expect(csv).toContain("itemId");
   });

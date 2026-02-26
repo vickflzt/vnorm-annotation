@@ -1,0 +1,1 @@
+ALTER TABLE `participant_sessions` ADD `participantCode` varchar(64);

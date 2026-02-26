@@ -29,6 +29,13 @@
       "when": 1772092301985,
       "tag": "0003_safe_anita_blake",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1772095150210,
+      "tag": "0004_short_loki",
+      "breakpoints": true
     }
   ]
 }

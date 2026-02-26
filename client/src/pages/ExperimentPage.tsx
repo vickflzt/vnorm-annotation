@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { ConsentPage } from "./experiment/ConsentPage";
+import { ParticipantCodePage } from "./experiment/ParticipantCodePage";
 import { InstructionsPage } from "./experiment/InstructionsPage";
 import { QuestionPage } from "./experiment/QuestionPage";
 import { CompletionPage } from "./experiment/CompletionPage";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Loader2 } from "lucide-react";
 
-type Stage = "landing" | "loading" | "consent" | "instructions" | "active" | "completed" | "terminated";
+type Stage = "landing" | "loading" | "consent" | "participant-code" | "instructions" | "active" | "completed" | "terminated";
 
 export default function ExperimentPage() {
   const [stage, setStage] = useState<Stage>("landing");
@@ -59,7 +60,7 @@ export default function ExperimentPage() {
     }
   };
 
-  const handleConsented = () => setStage("instructions");
+  const handleConsented = () => setStage("participant-code");
   const handleStartExperiment = () => setStage("active");
   const handleCompleted = () => setStage("completed");
   const handleTerminated = () => setStage("terminated");
@@ -173,6 +174,15 @@ export default function ExperimentPage() {
 
   if (stage === "consent" && participantId) {
     return <ConsentPage participantId={participantId} onConsented={handleConsented} />;
+  }
+
+  if (stage === "participant-code" && participantId) {
+    return (
+      <ParticipantCodePage
+        participantId={participantId}
+        onCodeSubmitted={() => setStage("instructions")}
+      />
+    );
   }
 
   if (stage === "instructions" && participantId && condition) {

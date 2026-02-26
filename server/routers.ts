@@ -20,6 +20,7 @@ import {
   getViolationsByParticipant,
   incrementQuestionCount,
   saveItemResponse,
+  saveParticipantCode,
   saveViolation,
   sampleQuestionsForSession,
   updateSessionStatus,
@@ -120,11 +121,28 @@ const experimentRouter = router({
         currentIndex: session.currentIndex,
         violationCount: session.violationCount,
         consentGiven: session.consentGiven,
+        participantCode: session.participantCode ?? null,
         totalItems: assignedItems.length,
         questions: orderedQuestions,
         startedAt: session.startedAt,
         completedAt: session.completedAt,
       };
+    }),
+
+  /**
+   * Save the manually-assigned participant code entered by the participant.
+   * Called after consent is given, before instructions.
+   */
+  submitParticipantCode: publicProcedure
+    .input(z.object({
+      participantId: z.string(),
+      participantCode: z.string().min(1).max(64),
+    }))
+    .mutation(async ({ input }) => {
+      const session = await getSession(input.participantId);
+      if (!session) throw new TRPCError({ code: "NOT_FOUND" });
+      await saveParticipantCode(input.participantId, input.participantCode.trim());
+      return { ok: true };
     }),
 
   /**
@@ -375,6 +393,7 @@ const dashboardRouter = router({
 
     const header = [
       "participantId",
+      "participantCode",
       "condition",
       "itemId",
       "category",
@@ -393,6 +412,7 @@ const dashboardRouter = router({
       const s = sessionMap.get(r.participantId);
       return [
         r.participantId,
+        s?.participantCode ?? "",
         r.condition,
         r.itemId,
         r.category,

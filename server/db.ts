@@ -203,6 +203,18 @@ export async function getSession(participantId: string) {
   return result[0];
 }
 
+export async function saveParticipantCode(
+  participantId: string,
+  participantCode: string
+) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(participantSessions)
+    .set({ participantCode })
+    .where(eq(participantSessions.participantId, participantId));
+}
+
 export async function updateSessionStatus(
   participantId: string,
   status: "consent" | "instructions" | "active" | "completed" | "terminated",
