@@ -267,7 +267,7 @@ export function QuestionPage({
               <div className="text-lg font-mono font-bold text-slate-900">
                 <MathRenderer
                   content={currentQuestion.extractedResponseAnswer}
-                  inline
+                  isMathOnly
                 />
               </div>
             </div>
