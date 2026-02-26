@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { MathRenderer } from "@/components/MathRenderer";
 import { useAntiCheat } from "@/hooks/useAntiCheat";
 import { useCountdown } from "@/hooks/useCountdown";
@@ -76,6 +83,7 @@ export function QuestionPage({
   const [helpfulness, setHelpfulness] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [timerActive, setTimerActive] = useState(true);
+  const [showTimeoutDialog, setShowTimeoutDialog] = useState(false);
   const startTimeRef = useRef<number>(Date.now());
 
   const submitResponse = trpc.experiment.submitResponse.useMutation();
@@ -89,16 +97,17 @@ export function QuestionPage({
     setJudgment(null);
     setHelpfulness(null);
     setTimerActive(true);
+    setShowTimeoutDialog(false);
     startTimeRef.current = Date.now();
   }, [currentIndex]);
 
-  const handleTimeout = useCallback(async () => {
+  const handleTimeout = useCallback(() => {
     if (isSubmitting) return;
+    // Stop the timer but do NOT auto-submit — show a warning dialog instead
     setTimerActive(false);
-    toast.warning("时间到！已自动提交 / Time's up! Auto-submitted", { duration: 2000 });
-    await doSubmit(null, true);
+    setShowTimeoutDialog(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentIndex, isSubmitting]);
+  }, [isSubmitting]);
 
   const { remaining, elapsedSeconds, reset: resetTimer } = useCountdown({
     durationSeconds: QUESTION_TIME_LIMIT,
@@ -120,7 +129,7 @@ export function QuestionPage({
     setIsSubmitting(true);
     setTimerActive(false);
 
-    const rt = timedOut ? QUESTION_TIME_LIMIT : elapsedSeconds;
+      const rt = timedOut ? QUESTION_TIME_LIMIT : (timerActive ? elapsedSeconds : QUESTION_TIME_LIMIT);
 
     try {
       const result = await submitResponse.mutateAsync({
@@ -132,6 +141,8 @@ export function QuestionPage({
         rtSeconds: Math.round(rt * 10) / 10,
         timedOut,
         helpfulness: condition === "AJ" ? (helpfulness ?? null) : null,
+        // Use capped elapsed time when timer has already expired
+        // (override the elapsedSeconds which may keep counting)
       });
 
       if (result.isCompleted) {
@@ -164,6 +175,9 @@ export function QuestionPage({
 
   if (!currentQuestion) return null;
 
+  // After timeout, elapsed time is capped at QUESTION_TIME_LIMIT for recording
+  const recordedElapsed = timerActive ? elapsedSeconds : QUESTION_TIME_LIMIT;
+
   const timerPercent = (remaining / QUESTION_TIME_LIMIT) * 100;
   const timerColor =
     remaining > 60 ? "bg-emerald-500" : remaining > 30 ? "bg-amber-500" : "bg-red-500";
@@ -185,6 +199,37 @@ export function QuestionPage({
       className="min-h-screen bg-slate-50 select-none"
       style={{ userSelect: "none", WebkitUserSelect: "none" }}
     >
+      {/* Timeout warning dialog */}
+      <Dialog open={showTimeoutDialog} onOpenChange={() => {}}
+      >
+        <DialogContent
+          className="max-w-sm"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600">
+              <Clock className="w-5 h-5" />
+              时间已到 / Time's Up
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-600 leading-relaxed">
+            本题 3 分钟时限已到，但您仍可继续作答并提交。
+            <br />
+            <span className="text-slate-400 text-xs">
+              The 3-minute limit has passed. You may still complete and submit your answer.
+            </span>
+          </p>
+          <DialogFooter>
+            <Button
+              onClick={() => setShowTimeoutDialog(false)}
+              className="w-full bg-amber-500 hover:bg-amber-600 text-white"
+            >
+              继续作答 / Continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {/* Top bar */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">

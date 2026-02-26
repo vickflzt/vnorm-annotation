@@ -61,3 +61,4 @@
 - [ ] Real-time dashboard refresh (polling/WebSocket)
 - [ ] Expand question bank
 - [x] 翻题时自动滚动到页面顶部
+- [x] 单题超时改为弹窗警告，不自动提交，被试可继续作答
