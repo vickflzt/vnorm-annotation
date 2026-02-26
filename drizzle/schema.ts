@@ -42,6 +42,7 @@ export const questionBank = mysqlTable("question_bank", {
   subject: varchar("subject", { length: 128 }),
   uniqueId: varchar("uniqueId", { length: 256 }),
   sourceCondition: varchar("sourceCondition", { length: 32 }),
+  figureUrl: text("figureUrl"), // CDN URL for geometric figure image (if any)
   countAO: int("countAO").default(0).notNull(),   // how many AO annotations collected
   countAJ: int("countAJ").default(0).notNull(),   // how many AJ annotations collected
   targetCount: int("targetCount").default(3).notNull(), // target per condition

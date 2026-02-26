@@ -64,3 +64,9 @@
 - [x] 单题超时改为弹窗警告，不自动提交，被试可继续作答
 - [x] 修复解题过程中裸 LaTeX 环境（align*, pmatrix 等）未渲染问题（已通过代码审查和 tokenizer 逻辑验证）
 - [x] 优化含图题占位提示文字 → 统一为纯英文："This problem originally contained a geometric diagram which has been omitted and cannot be displayed."
+
+## 图形图片支持
+- [x] 上传5张几何图片到S3，获取CDN URL
+- [x] 数据库 question_bank 表新增 figureUrl 字段并迁移
+- [x] 将各题图片URL写入数据库（FN01/FN04/FN09/FN10/TN07）
+- [x] 前端 QuestionPage 在题目下方渲染图片（替换占位符文本）

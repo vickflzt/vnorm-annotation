@@ -109,6 +109,7 @@ const experimentRouter = router({
           extractedResponseAnswer: q.extractedResponseAnswer,
           difficultyLevel: q.difficultyLevel,
           subject: q.subject,
+          figureUrl: q.figureUrl ?? null,
         };
       }).filter(Boolean);
 

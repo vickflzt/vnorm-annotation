@@ -23,6 +23,7 @@ interface Question {
   extractedResponseAnswer: string | null | undefined;
   difficultyLevel: number | null | undefined;
   subject: string | null | undefined;
+  figureUrl: string | null | undefined;
 }
 
 interface QuestionPageProps {
@@ -286,6 +287,17 @@ export function QuestionPage({
           <div className="px-6 py-5">
             <MathRenderer content={currentQuestion.question} />
           </div>
+          {/* Geometric figure image */}
+          {currentQuestion.figureUrl && (
+            <div className="px-6 pb-5 flex justify-center">
+              <img
+                src={currentQuestion.figureUrl}
+                alt="Geometric diagram for this problem"
+                className="max-w-xs w-full h-auto border border-slate-100 rounded-lg"
+                draggable={false}
+              />
+            </div>
+          )}
         </div>
 
         {/* AJ: Full response / justification */}
