@@ -79,3 +79,4 @@
 - [x] 修复 MathRenderer：含 \$ 转义字符的题目（如 superfactorial $n\$$ 和 $4\$$）渲染错误，\$$ 被误识别为块级公式分隔符（添加 findUnescapedDoubleDollar 跳过转义）
 - [x] 修复 MathRenderer：response 中多行块级公式（$$\n\begin{vmatrix}...\end{vmatrix}\n$$）未正确渲染（修复多行块级公式收集逻辑：只有独立的 $$ 行才结束块）
 - [x] 新增被试编号输入功能：知情同意后插入编号输入页面，保存到数据库 participantCode 字段，CSV/JSON 导出包含该字段，15/15 测试通过
+- [x] 修复 LLM Response 区域行内/块级公式过长溢出容器、无法横向滚动的问题（CSS min-w-0 + overflow-x:auto + overflow-wrap:break-word）

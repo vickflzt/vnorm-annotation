@@ -133,6 +133,37 @@
   }
 }
 
+/**
+ * Math content rendering styles.
+ * Ensures KaTeX formulas don't overflow their containers.
+ */
+.math-content {
+  /* Allow the container itself to shrink and not overflow its parent */
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Block-level math: scrollable horizontally if too wide */
+.math-content .katex-block,
+.math-content .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+  padding-bottom: 4px; /* room for scrollbar */
+}
+
+/* Inline math: allow wrapping at word boundaries */
+.math-content .katex {
+  overflow-wrap: break-word;
+}
+
+/* Paragraphs inside math-content should not overflow */
+.math-content p {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
 @layer components {
   /**
    * Custom container utility that centers content and adds responsive padding.

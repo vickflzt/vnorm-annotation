@@ -279,7 +279,7 @@ function buildHtml(src: string): string {
   let out = "";
   for (const seg of segments) {
     if (seg.kind === "math-block") {
-      out += `<div class="katex-block my-4 overflow-x-auto text-center">${renderMath(seg.content, true)}</div>`;
+      out += `<div class="katex-block my-4 overflow-x-auto max-w-full text-center">${renderMath(seg.content, true)}</div>`;
     } else if (seg.kind === "blockquote") {
       // Render blockquote content (may contain inline math)
       const inner = renderInlineSegment(seg.content);
@@ -306,7 +306,7 @@ function renderInlineSegment(src: string): string {
   let out = "";
   for (const tok of tokens) {
     if (tok.type === "block-math") {
-      out += `<div class="katex-block my-3 overflow-x-auto text-center">${renderMath(tok.value, true)}</div>`;
+      out += `<div class="katex-block my-3 overflow-x-auto max-w-full text-center">${renderMath(tok.value, true)}</div>`;
     } else if (tok.type === "inline-math") {
       out += renderMath(tok.value, false);
     } else {
@@ -338,7 +338,7 @@ export function MathRenderer({ content, className = "", isMathOnly = false }: Ma
 
   return (
     <div
-      className={`math-content ${className}`}
+      className={`math-content min-w-0 w-full ${className}`}
       // biome-ignore lint/security/noDangerouslySetInnerHtml: intentional KaTeX output
       dangerouslySetInnerHTML={{ __html: html }}
     />

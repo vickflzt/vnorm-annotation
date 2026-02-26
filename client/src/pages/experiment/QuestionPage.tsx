@@ -308,8 +308,8 @@ export function QuestionPage({
                 LLM Response / 给出的解答过程（Answer + Justification）
               </span>
             </div>
-            <div className="px-6 py-5 max-h-[480px] overflow-y-auto">
-              <MathRenderer content={currentQuestion.response} />
+            <div className="px-6 py-5 max-h-[480px] overflow-y-auto overflow-x-hidden min-w-0">
+              <MathRenderer content={currentQuestion.response} className="min-w-0" />
             </div>
           </div>
         )}
