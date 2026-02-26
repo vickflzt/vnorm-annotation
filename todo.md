@@ -70,3 +70,6 @@
 - [x] 数据库 question_bank 表新增 figureUrl 字段并迁移
 - [x] 将各题图片URL写入数据库（FN01/FN04/FN09/FN10/TN07）
 - [x] 前端 QuestionPage 在题目下方渲染图片（替换占位符文本）
+
+## Bug 修复
+- [x] 修复 MathRenderer 内联公式渲染问题：改进斜体正则，避免数学乘号 * 被误判为 Markdown 格式符

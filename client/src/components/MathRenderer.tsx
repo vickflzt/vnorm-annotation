@@ -50,7 +50,12 @@ function inlineToHtml(text: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    // Only treat * as italic when it directly flanks non-whitespace (CommonMark rule):
+    // - opening * must not be preceded by * (to avoid matching inside **bold**)
+    // - opening * must not be followed by whitespace
+    // - closing * must not be preceded by whitespace
+    // - closing * must not be followed by * (to avoid matching inside **bold**)
+    .replace(/(?<!\*)\*(?!\s|\*)(.+?)(?<!\s|\*)\*(?!\*)/g, "<em>$1</em>")
     .replace(/`([^`]+)`/g, '<code class="bg-slate-100 rounded px-1 text-sm font-mono">$1</code>');
 }
 
