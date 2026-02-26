@@ -362,3 +362,64 @@ export async function getItemCoverageStats() {
     .where(sql`${questionBank.category} != 'GSM-CHECK'`)
     .orderBy(asc(questionBank.itemId));
 }
+
+// ─── Quota Reset ──────────────────────────────────────────────────────────────
+
+/**
+ * Reset ALL quota: wipe sessions, responses, violations, and reset countAO/countAJ to 0.
+ * Keeps the question bank and experiment config intact.
+ */
+export async function resetAllQuota() {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.delete(violationEvents);
+  await db.delete(itemResponses);
+  await db.delete(participantSessions);
+  await db.update(questionBank).set({ countAO: 0, countAJ: 0 });
+}
+
+/**
+ * Release quota held by a single participant:
+ * - Decrement countAO/countAJ for each item they were assigned
+ * - Delete their responses, violations, and session record
+ */
+export async function releaseParticipantQuota(participantId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+
+  const sessions = await db
+    .select()
+    .from(participantSessions)
+    .where(eq(participantSessions.participantId, participantId))
+    .limit(1);
+
+  if (sessions.length === 0) throw new Error("Session not found");
+  const session = sessions[0];
+  const condition = session.condition;
+
+  let assignedItemIds: string[] = [];
+  try {
+    const raw = session.assignedItems;
+    assignedItemIds = Array.isArray(raw) ? (raw as string[]) : JSON.parse(String(raw ?? "[]"));
+  } catch {
+    assignedItemIds = [];
+  }
+
+  for (const itemId of assignedItemIds) {
+    if (condition === "AO") {
+      await db
+        .update(questionBank)
+        .set({ countAO: sql`GREATEST(0, ${questionBank.countAO} - 1)` })
+        .where(eq(questionBank.itemId, itemId));
+    } else {
+      await db
+        .update(questionBank)
+        .set({ countAJ: sql`GREATEST(0, ${questionBank.countAJ} - 1)` })
+        .where(eq(questionBank.itemId, itemId));
+    }
+  }
+
+  await db.delete(violationEvents).where(eq(violationEvents.participantId, participantId));
+  await db.delete(itemResponses).where(eq(itemResponses.participantId, participantId));
+  await db.delete(participantSessions).where(eq(participantSessions.participantId, participantId));
+}

@@ -24,6 +24,8 @@ import {
   sampleQuestionsForSession,
   updateSessionStatus,
   upsertExperimentConfig,
+  resetAllQuota,
+  releaseParticipantQuota,
 } from "./db";
 import { ENV } from "./_core/env";
 // ─── Admin guard ──────────────────────────────────────────────────────────────
@@ -409,6 +411,20 @@ const dashboardRouter = router({
 
     return [header, ...rows].join("\n");
   }),
+
+  /** Reset ALL quota: wipe all sessions/responses/violations, reset countAO/countAJ to 0. */
+  resetAllQuota: adminProcedure.mutation(async () => {
+    await resetAllQuota();
+    return { success: true };
+  }),
+
+  /** Release quota held by a single participant and delete their records. */
+  releaseParticipant: adminProcedure
+    .input(z.object({ participantId: z.string() }))
+    .mutation(async ({ input }) => {
+      await releaseParticipantQuota(input.participantId);
+      return { success: true };
+    }),
 });
 
 // ─── App router ───────────────────────────────────────────────────────────────
