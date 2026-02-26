@@ -148,10 +148,50 @@ function tokeniseInline(src: string): Token[] {
 /**
  * Split content into block-level segments: blockquotes, block-math, and text paragraphs.
  * Then render each segment appropriately.
+ *
+ * Handles mixed lines where $$ block math appears inline with surrounding text,
+ * e.g. "$$\\frac{...}{}$$for $x > 0.$" or "$$\\sum...$$,$$where $F_n$..."
  */
 function buildHtml(src: string): string {
+  // Pre-process: split any line that has $$...$$ mixed with surrounding text
+  // into separate virtual lines so the line-based parser can handle them.
+  // Strategy: replace occurrences of (text)($$...$$)(text) on a single line
+  // by inserting newlines around the $$ blocks.
+  const normalised = src
+    .split("\n")
+    .flatMap((line) => {
+      // If the line starts with $$ AND ends with $$ (pure block math line), leave it alone
+      // e.g. "$$\\frac{a}{b}$$" or "$$" (opening delimiter)
+      // But "$$\\frac{a}{b}$$for $x>0.$" must be split.
+      const isPureBlockLine = /^\s*\$\$/.test(line) && /\$\$\s*$/.test(line);
+      const isOpeningOnly = /^\s*\$\$\s*$/.test(line); // just "$$" alone
+      if (isPureBlockLine || isOpeningOnly) return [line];
+      // If the line contains $$ anywhere, split around it
+      if (line.includes("$$")) {
+        // Split the line by $$ pairs, preserving the delimiters
+        const parts: string[] = [];
+        let rest = line;
+        while (rest.includes("$$")) {
+          const open = rest.indexOf("$$");
+          const close = rest.indexOf("$$", open + 2);
+          if (close === -1) break; // unclosed $$, leave as-is
+          const before = rest.slice(0, open);
+          const math = rest.slice(open, close + 2); // includes $$ delimiters
+          rest = rest.slice(close + 2);
+          if (before.trim()) parts.push(before.trimEnd());
+          parts.push(math); // pure $$...$$ line
+          // trailing text (after closing $$) may have punctuation like "," — strip leading punct
+          // but keep it as a separate text line
+        }
+        if (rest.trim()) parts.push(rest.trimStart());
+        return parts.length > 0 ? parts : [line];
+      }
+      return [line];
+    })
+    .join("\n");
+
   // Split into lines for block-level processing
-  const lines = src.split("\n");
+  const lines = normalised.split("\n");
   const segments: Array<{ kind: "blockquote" | "math-block" | "text"; content: string }> = [];
 
   let i = 0;
@@ -174,14 +214,14 @@ function buildHtml(src: string): string {
       // Collect until closing $$
       let mathContent = "";
       const openLine = line.replace(/^\s*\$\$/, "");
-      // Check if $$ closes on same line
+      // Check if $$ closes on same line: $$...$$
       if (/\$\$\s*$/.test(openLine) && openLine.trim() !== "") {
-        // Single-line block math: $$...$$
         mathContent = openLine.replace(/\$\$\s*$/, "").trim();
         segments.push({ kind: "math-block", content: mathContent });
         i++;
         continue;
       }
+      // Empty openLine means opening $$ is alone on this line → multi-line block
       mathContent = openLine;
       i++;
       while (i < lines.length) {

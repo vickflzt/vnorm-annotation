@@ -75,3 +75,4 @@
 - [x] 修复 MathRenderer 内联公式渲染问题：改进斜体正则，避免数学乘号 * 被误判为 Markdown 格式符
 - [ ] 修复首页 "Failed to fetch" API Mutation 错误（发生在 /?from_webdev=1，管理员用户）
 - [x] 从5道含图题（FN01/FN04/FN09/FN10/TN07）的 question 字段中删除图形占位符文本
+- [x] 修复 MathRenderer：$$...$$ 块级公式与后续行内文字混排时未正确分割渲染（预处理拆分逻辑）
