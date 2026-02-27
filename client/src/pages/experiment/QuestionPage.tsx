@@ -311,20 +311,20 @@ export function QuestionPage({
   const displayHardLimit = phase === "judgment" ? PHASE1_HARD_LIMIT : PHASE2_HARD_LIMIT;
   const isOvertime = phase === "judgment" ? isPhase1Overtime : isPhase2Overtime;
 
-  // Timer bar: during normal time use remaining/soft; during overtime use (elapsed-soft)/(hard-soft)
+  // Timer bar: during normal time fill by elapsed/soft; during overtime fill by (elapsed-soft)/(hard-soft)
   const timerPercent = isOvertime
     ? Math.min(100, ((displayElapsed - displaySoftLimit) / (displayHardLimit - displaySoftLimit)) * 100)
-    : (displayRemaining / displaySoftLimit) * 100;
+    : Math.min(100, (displayElapsed / displaySoftLimit) * 100);
 
-  const timerColor = isOvertime ? "bg-red-500" : displayRemaining > displaySoftLimit * 0.33
+  const timerColor = isOvertime ? "bg-red-500" : displayElapsed < displaySoftLimit * 0.67
     ? "bg-emerald-500"
-    : displayRemaining > displaySoftLimit * 0.17
+    : displayElapsed < displaySoftLimit * 0.83
     ? "bg-amber-500"
     : "bg-red-500";
 
   const timerTextColor = isOvertime ? "text-red-700"
-    : displayRemaining > displaySoftLimit * 0.33 ? "text-emerald-700"
-    : displayRemaining > displaySoftLimit * 0.17 ? "text-amber-700"
+    : displayElapsed < displaySoftLimit * 0.67 ? "text-emerald-700"
+    : displayElapsed < displaySoftLimit * 0.83 ? "text-amber-700"
     : "text-red-700";
 
   const formatTime = (s: number) => {
@@ -505,19 +505,15 @@ export function QuestionPage({
             </span>
           </div>
 
-          {/* Timer — shows phase label + time */}
+          {/* Timer — shows phase label + elapsed time (positive counter) */}
           <div className={`flex items-center gap-2 ${timerTextColor}`}>
             <Clock className="w-4 h-4" />
             <span className="text-xs text-slate-400 mr-0.5">
               {isPhase2 ? "P2" : "P1"}
             </span>
-            {isOvertime ? (
-              <span className="text-sm font-mono font-bold text-red-600">
-                +{formatTime(overtimeElapsed)}
-              </span>
-            ) : (
-              <span className="text-sm font-mono font-bold">{formatTime(displayRemaining)}</span>
-            )}
+            <span className={`text-sm font-mono font-bold ${isOvertime ? "text-red-600" : ""}`}>
+              {formatTime(displayElapsed)}
+            </span>
           </div>
         </div>
         {/* Timer bar */}

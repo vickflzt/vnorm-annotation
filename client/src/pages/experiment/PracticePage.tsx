@@ -139,16 +139,16 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
 
   const timerPercent = isOvertime
     ? Math.min(100, ((displayElapsed - displaySoftLimit) / (displayHardLimit - displaySoftLimit)) * 100)
-    : (displayRemaining / displaySoftLimit) * 100;
+    : Math.min(100, (displayElapsed / displaySoftLimit) * 100);
 
   const timerColor = isOvertime ? "bg-red-500"
-    : displayRemaining > displaySoftLimit * 0.33 ? "bg-emerald-500"
-    : displayRemaining > displaySoftLimit * 0.17 ? "bg-amber-500"
+    : displayElapsed < displaySoftLimit * 0.67 ? "bg-emerald-500"
+    : displayElapsed < displaySoftLimit * 0.83 ? "bg-amber-500"
     : "bg-red-500";
 
   const timerTextColor = isOvertime ? "text-red-700"
-    : displayRemaining > displaySoftLimit * 0.33 ? "text-emerald-700"
-    : displayRemaining > displaySoftLimit * 0.17 ? "text-amber-700"
+    : displayElapsed < displaySoftLimit * 0.67 ? "text-emerald-700"
+    : displayElapsed < displaySoftLimit * 0.83 ? "text-amber-700"
     : "text-red-700";
 
   const formatTime = (s: number) => {
@@ -288,13 +288,9 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
             <span className="text-xs text-slate-400 mr-0.5">
               {isPhase2 ? "P2" : "P1"}
             </span>
-            {isOvertime ? (
-              <span className="text-sm font-mono font-bold text-red-600">
-                +{formatTime(overtimeElapsed)}
-              </span>
-            ) : (
-              <span className="text-sm font-mono font-bold">{formatTime(displayRemaining)}</span>
-            )}
+            <span className={`text-sm font-mono font-bold ${isOvertime ? "text-red-600" : ""}`}>
+              {formatTime(displayElapsed)}
+            </span>
           </div>
         </div>
         <div className="h-1 bg-slate-100">
