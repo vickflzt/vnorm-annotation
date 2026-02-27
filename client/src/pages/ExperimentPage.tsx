@@ -118,9 +118,9 @@ export default function ExperimentPage() {
 
           {/* Condition badge (if token-assigned) */}
           {tokenData && (
-            <div className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-200 rounded-full px-4 py-1.5 text-sm text-indigo-700 font-medium">
-              <span className="w-2 h-2 rounded-full bg-indigo-500 inline-block" />
-              实验组：{tokenData.condition === "AO" ? "AO（仅答案）" : "AJ（答案 + 推理过程）"}
+            <div className="inline-flex items-center gap-1.5 bg-slate-100 rounded-full px-3 py-1 text-xs text-slate-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-slate-400 inline-block" />
+              {tokenData.condition}
             </div>
           )}
 
