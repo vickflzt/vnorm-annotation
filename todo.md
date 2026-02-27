@@ -90,3 +90,4 @@
 - [x] 重构 QuestionPage 为两阶段：阶段一（题目+判断，3min计时）→ 继续按钮 → 阶段二（helpfulness/confidence，1min计时），判断区域冻结，两阶段反应时分别收集（rtSeconds / confidenceRtSeconds），15/15 测试通过
 - [x] 修复阶段二提交失败无法跳转下一题的 bug（确认为测试时切换标签页触发反作弊终止会话导致，正式实验不会出现）
 - [x] 新增练习模块：1道练习题（AO/AJ各版本）+ 两阶段流程 + 提醒横幅 + AJ Response 旁标注 + 练习完成确认界面，数据不写入数据库，15/15 测试通过
+- [x] PracticeCompletePage 中两条提醒文字（判断锁定、无法回看）改为红色

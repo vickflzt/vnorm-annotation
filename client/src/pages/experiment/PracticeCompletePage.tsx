@@ -36,8 +36,8 @@ export function PracticeCompletePage({ condition, onStart }: PracticeCompletePag
           </p>
           <ul className="space-y-2 text-xs text-slate-600">
             <li>• 每题分为两部分：<strong>判断（第一部分）</strong>和<strong>评分（第二部分）</strong>。</li>
-            <li>• 点击"继续"后，第一部分的判断将立即锁定，<strong>无法修改</strong>。</li>
-            <li>• 完成第二部分评分后，将直接翻到下一题，<strong>无法回看</strong>。</li>
+            <li className="text-red-600 font-medium">• 点击"继续"后，第一部分的判断将立即锁定，<strong>无法修改</strong>。</li>
+            <li className="text-red-600 font-medium">• 完成第二部分评分后，将直接翻到下一题，<strong>无法回看</strong>。</li>
             <li>• 第一部分限时 3 分钟，第二部分限时 1 分钟，超时后弹出提示但仍可继续。</li>
             {condition === "AJ" && (
               <li>• <strong>请认真阅读每题的 LLM Response（解答过程）</strong>，这是您做出判断的重要依据。</li>
@@ -45,8 +45,8 @@ export function PracticeCompletePage({ condition, onStart }: PracticeCompletePag
           </ul>
           <div className="border-t border-slate-200 pt-3 space-y-1 text-xs text-slate-500">
             <li>• Each question has two parts: <strong>Judgment (Part 1)</strong> and <strong>Ratings (Part 2)</strong>.</li>
-            <li>• After clicking "Continue", your Part 1 judgment is <strong>locked and cannot be changed</strong>.</li>
-            <li>• After submitting Part 2, you move directly to the next question with <strong>no option to go back</strong>.</li>
+            <li className="text-red-600 font-medium">• After clicking "Continue", your Part 1 judgment is <strong>locked and cannot be changed</strong>.</li>
+            <li className="text-red-600 font-medium">• After submitting Part 2, you move directly to the next question with <strong>no option to go back</strong>.</li>
             <li>• Part 1 has a 3-minute limit; Part 2 has a 1-minute limit. A warning appears when time is up.</li>
             {condition === "AJ" && (
               <li>• <strong>Please read the LLM Response carefully</strong> — it is intended to inform your judgment.</li>
