@@ -87,3 +87,4 @@
 - [x] 删除 QuestionPage 中 QUESTION 旁边的蓝色类别标签（subject badge），所有题目均不显示
 - [x] 强化知情同意页面复选框：视觉突出（amber 边框）+ 未勾选点击继续时红色闪烁 + 行内错误提示 + 整个区域可点击
 - [x] 新增置信度评分功能：每道题判断后在同一页面内展示 1-5 分评分区块，所有题目所有实验组必填，数据保存到 confidenceRating 字段，CSV/JSON 导出包含，15/15 测试通过
+- [x] 重构 QuestionPage 为两阶段：阶段一（题目+判断，3min计时）→ 继续按钮 → 阶段二（helpfulness/confidence，1min计时），判断区域冻结，两阶段反应时分别收集（rtSeconds / confidenceRtSeconds），15/15 测试通过

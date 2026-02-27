@@ -84,6 +84,7 @@ export const itemResponses = mysqlTable("item_responses", {
   timedOut: boolean("timedOut").default(false).notNull(),
   helpfulness: int("helpfulness"), // AJ only: 1-5
   confidenceRating: int("confidenceRating"), // all conditions: 1-5 confidence in judgment
+  confidenceRtSeconds: float("confidenceRtSeconds"), // reaction time for phase 2 (helpfulness+confidence)
   submittedAt: timestamp("submittedAt").defaultNow().notNull(),
 });
 

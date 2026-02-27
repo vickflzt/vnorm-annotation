@@ -254,6 +254,7 @@ export async function saveItemResponse(data: {
   timedOut: boolean;
   helpfulness?: number | null;
   confidenceRating?: number | null;
+  confidenceRtSeconds?: number | null;
 }) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");

@@ -190,6 +190,7 @@ const experimentRouter = router({
         timedOut: z.boolean(),
         helpfulness: z.number().int().min(1).max(5).nullable().optional(),
         confidenceRating: z.number().int().min(1).max(5).nullable().optional(),
+        confidenceRtSeconds: z.number().min(0).nullable().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -210,6 +211,7 @@ const experimentRouter = router({
         timedOut: input.timedOut,
         helpfulness: input.helpfulness ?? null,
         confidenceRating: input.confidenceRating ?? null,
+        confidenceRtSeconds: input.confidenceRtSeconds ?? null,
       });
 
       // Increment quota counter for non-GSM items
@@ -405,6 +407,7 @@ const dashboardRouter = router({
       "timedOut",
       "helpfulness",
       "confidenceRating",
+      "confidenceRtSeconds",
       "submittedAt",
       "sessionStatus",
       "violationCount",
@@ -425,6 +428,7 @@ const dashboardRouter = router({
         r.timedOut ? "1" : "0",
         r.helpfulness ?? "",
         r.confidenceRating ?? "",
+        r.confidenceRtSeconds?.toFixed(2) ?? "",
         r.submittedAt?.toISOString() ?? "",
         s?.status ?? "",
         s?.violationCount ?? "",

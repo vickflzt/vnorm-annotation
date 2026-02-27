@@ -1,0 +1,1 @@
+ALTER TABLE `item_responses` ADD `confidenceRtSeconds` float;

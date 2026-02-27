@@ -35,9 +35,10 @@ interface QuestionPageProps {
   onTerminated: () => void;
 }
 
-const QUESTION_TIME_LIMIT = 180; // 3 minutes
+// Phase 1: judgment (3 min), Phase 2: helpfulness + confidence (1 min)
+const PHASE1_TIME_LIMIT = 180; // 3 minutes
+const PHASE2_TIME_LIMIT = 60;  // 1 minute
 
-// Helpfulness options per document spec
 const CONFIDENCE_OPTIONS = [
   { value: 1, labelZh: "1 = 很不确定", labelEn: "1 = Very uncertain" },
   { value: 2, labelZh: "2 = 不太确定", labelEn: "2 = Uncertain" },
@@ -88,13 +89,24 @@ export function QuestionPage({
   onTerminated,
 }: QuestionPageProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
+
+  // Phase: "judgment" = phase 1, "rating" = phase 2
+  const [phase, setPhase] = useState<"judgment" | "rating">("judgment");
+
+  // Phase 1 state
   const [judgment, setJudgment] = useState<"correct" | "incorrect" | null>(null);
+  const [phase1TimerActive, setPhase1TimerActive] = useState(true);
+  const [showPhase1TimeoutDialog, setShowPhase1TimeoutDialog] = useState(false);
+  // Captured rt for phase 1 when user clicks Continue
+  const phase1RtRef = useRef<number>(0);
+
+  // Phase 2 state
   const [helpfulness, setHelpfulness] = useState<number | null>(null);
   const [confidenceRating, setConfidenceRating] = useState<number | null>(null);
+  const [phase2TimerActive, setPhase2TimerActive] = useState(false);
+  const [showPhase2TimeoutDialog, setShowPhase2TimeoutDialog] = useState(false);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [timerActive, setTimerActive] = useState(true);
-  const [showTimeoutDialog, setShowTimeoutDialog] = useState(false);
-  const startTimeRef = useRef<number>(Date.now());
 
   const submitResponse = trpc.experiment.submitResponse.useMutation();
 
@@ -102,28 +114,53 @@ export function QuestionPage({
   const totalQuestions = questions.length;
   const isLastQuestion = currentIndex === totalQuestions - 1;
 
-  // Reset state when question changes
+  // Reset all state when question changes
   useEffect(() => {
+    setPhase("judgment");
     setJudgment(null);
     setHelpfulness(null);
     setConfidenceRating(null);
-    setTimerActive(true);
-    setShowTimeoutDialog(false);
-    startTimeRef.current = Date.now();
+    setPhase1TimerActive(true);
+    setPhase2TimerActive(false);
+    setShowPhase1TimeoutDialog(false);
+    setShowPhase2TimeoutDialog(false);
+    phase1RtRef.current = 0;
   }, [currentIndex]);
 
-  const handleTimeout = useCallback(() => {
+  // Phase 1 timeout handler
+  const handlePhase1Timeout = useCallback(() => {
     if (isSubmitting) return;
-    // Stop the timer but do NOT auto-submit — show a warning dialog instead
-    setTimerActive(false);
-    setShowTimeoutDialog(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setPhase1TimerActive(false);
+    setShowPhase1TimeoutDialog(true);
   }, [isSubmitting]);
 
-  const { remaining, elapsedSeconds, reset: resetTimer } = useCountdown({
-    durationSeconds: QUESTION_TIME_LIMIT,
-    onExpire: handleTimeout,
-    active: timerActive && !isSubmitting,
+  // Phase 2 timeout handler
+  const handlePhase2Timeout = useCallback(() => {
+    if (isSubmitting) return;
+    setPhase2TimerActive(false);
+    setShowPhase2TimeoutDialog(true);
+  }, [isSubmitting]);
+
+  // Phase 1 countdown (3 min)
+  const {
+    remaining: phase1Remaining,
+    elapsedSeconds: phase1Elapsed,
+    reset: resetPhase1Timer,
+  } = useCountdown({
+    durationSeconds: PHASE1_TIME_LIMIT,
+    onExpire: handlePhase1Timeout,
+    active: phase1TimerActive && !isSubmitting,
+  });
+
+  // Phase 2 countdown (1 min)
+  const {
+    remaining: phase2Remaining,
+    elapsedSeconds: phase2Elapsed,
+    reset: resetPhase2Timer,
+  } = useCountdown({
+    durationSeconds: PHASE2_TIME_LIMIT,
+    onExpire: handlePhase2Timeout,
+    active: phase2TimerActive && !isSubmitting,
   });
 
   // Anti-cheat
@@ -135,45 +172,57 @@ export function QuestionPage({
     onTerminated,
   });
 
-  const doSubmit = async (responseCorrect: boolean | null, timedOut: boolean) => {
-    if (isSubmitting || !currentQuestion) return;
-    setIsSubmitting(true);
-    setTimerActive(false);
+  // Determine which timer to show in top bar
+  const activePhase = phase;
+  const displayRemaining = activePhase === "judgment" ? phase1Remaining : phase2Remaining;
+  const displayLimit = activePhase === "judgment" ? PHASE1_TIME_LIMIT : PHASE2_TIME_LIMIT;
+  const timerPercent = (displayRemaining / displayLimit) * 100;
+  const timerColor =
+    displayRemaining > (displayLimit * 0.33)
+      ? "bg-emerald-500"
+      : displayRemaining > (displayLimit * 0.17)
+      ? "bg-amber-500"
+      : "bg-red-500";
+  const timerTextColor =
+    displayRemaining > (displayLimit * 0.33)
+      ? "text-emerald-700"
+      : displayRemaining > (displayLimit * 0.17)
+      ? "text-amber-700"
+      : "text-red-700";
 
-      const rt = timedOut ? QUESTION_TIME_LIMIT : (timerActive ? elapsedSeconds : QUESTION_TIME_LIMIT);
-
-    try {
-      const result = await submitResponse.mutateAsync({
-        participantId,
-        itemId: currentQuestion.itemId,
-        category: currentQuestion.category as "TP" | "TN" | "FP" | "FN" | "GSM-CHECK",
-        questionIndex: currentIndex,
-        responseCorrect,
-        rtSeconds: Math.round(rt * 10) / 10,
-        timedOut,
-        helpfulness: condition === "AJ" ? (helpfulness ?? null) : null,
-        confidenceRating: confidenceRating ?? null,
-        // Use capped elapsed time when timer has already expired
-        // (override the elapsedSeconds which may keep counting)
-      });
-
-      if (result.isCompleted) {
-        onCompleted();
-      } else {
-        setCurrentIndex(result.nextIndex);
-        setIsSubmitting(false);
-        resetTimer();
-        // Scroll to top when advancing to next question
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      }
-    } catch {
-      setIsSubmitting(false);
-      setTimerActive(true);
-      toast.error("提交失败，请重试 / Submission failed, please retry");
-    }
+  const formatTime = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, "0")}`;
   };
 
-  const handleSubmit = () => {
+  // Handle "Continue" button (end of phase 1)
+  const handleContinue = () => {
+    if (!judgment) {
+      toast.error("请先做出正确/错误判断 / Please select Correct or Incorrect first");
+      return;
+    }
+    // Capture phase 1 RT: if timer still active use elapsed, else cap at limit
+    const rt = phase1TimerActive ? phase1Elapsed : PHASE1_TIME_LIMIT;
+    phase1RtRef.current = Math.round(rt * 10) / 10;
+
+    // Stop phase 1 timer, start phase 2 timer
+    setPhase1TimerActive(false);
+    setPhase("rating");
+    // Phase 2 timer starts when user sees the rating section
+    setPhase2TimerActive(true);
+    resetPhase2Timer();
+
+    // Scroll down so the new rating section is visible
+    setTimeout(() => {
+      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+    }, 100);
+  };
+
+  // Handle final submit (end of phase 2)
+  const doSubmit = async () => {
+    if (isSubmitting || !currentQuestion) return;
+
     if (!judgment) {
       toast.error("请先做出正确/错误判断 / Please select Correct or Incorrect first");
       return;
@@ -182,28 +231,51 @@ export function QuestionPage({
       toast.error("请评价解释的帮助程度 / Please rate the helpfulness of the justification");
       return;
     }
-    doSubmit(judgment === "correct", false);
+    if (confidenceRating === null) {
+      toast.error("请选择置信度评分 / Please select a confidence rating");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setPhase2TimerActive(false);
+
+    // Phase 2 RT: if timer still active use elapsed, else cap at limit
+    const confRt = phase2TimerActive ? phase2Elapsed : PHASE2_TIME_LIMIT;
+    const confidenceRtSeconds = Math.round(confRt * 10) / 10;
+
+    try {
+      const result = await submitResponse.mutateAsync({
+        participantId,
+        itemId: currentQuestion.itemId,
+        category: currentQuestion.category as "TP" | "TN" | "FP" | "FN" | "GSM-CHECK",
+        questionIndex: currentIndex,
+        responseCorrect: judgment === "correct",
+        rtSeconds: phase1RtRef.current,
+        timedOut: !phase1TimerActive && phase1Remaining <= 0,
+        helpfulness: condition === "AJ" ? (helpfulness ?? null) : null,
+        confidenceRating: confidenceRating ?? null,
+        confidenceRtSeconds,
+      });
+
+      if (result.isCompleted) {
+        onCompleted();
+      } else {
+        setCurrentIndex(result.nextIndex);
+        setIsSubmitting(false);
+        resetPhase1Timer();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    } catch {
+      setIsSubmitting(false);
+      setPhase2TimerActive(true);
+      toast.error("提交失败，请重试 / Submission failed, please retry");
+    }
   };
 
   if (!currentQuestion) return null;
 
-  // After timeout, elapsed time is capped at QUESTION_TIME_LIMIT for recording
-  const recordedElapsed = timerActive ? elapsedSeconds : QUESTION_TIME_LIMIT;
-
-  const timerPercent = (remaining / QUESTION_TIME_LIMIT) * 100;
-  const timerColor =
-    remaining > 60 ? "bg-emerald-500" : remaining > 30 ? "bg-amber-500" : "bg-red-500";
-  const timerTextColor =
-    remaining > 60 ? "text-emerald-700" : remaining > 30 ? "text-amber-700" : "text-red-700";
-
-  const formatTime = (s: number) => {
-    const m = Math.floor(s / 60);
-    const sec = Math.floor(s % 60);
-    return `${m}:${sec.toString().padStart(2, "0")}`;
-  };
-
-  // Determine if Next button should be enabled
-  const canSubmit =
+  const isPhase2 = phase === "rating";
+  const canSubmitPhase2 =
     !!judgment &&
     (condition !== "AJ" || helpfulness !== null) &&
     confidenceRating !== null &&
@@ -214,9 +286,8 @@ export function QuestionPage({
       className="min-h-screen bg-slate-50 select-none"
       style={{ userSelect: "none", WebkitUserSelect: "none" }}
     >
-      {/* Timeout warning dialog */}
-      <Dialog open={showTimeoutDialog} onOpenChange={() => {}}
-      >
+      {/* Phase 1 timeout dialog */}
+      <Dialog open={showPhase1TimeoutDialog} onOpenChange={() => {}}>
         <DialogContent
           className="max-w-sm"
           onPointerDownOutside={(e) => e.preventDefault()}
@@ -229,15 +300,15 @@ export function QuestionPage({
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-slate-600 leading-relaxed">
-            本题 3 分钟时限已到，但您仍可继续作答并提交。
+            本题 3 分钟时限已到，但您仍可继续作答并点击继续。
             <br />
             <span className="text-slate-400 text-xs">
-              The 3-minute limit has passed. You may still complete and submit your answer.
+              The 3-minute limit has passed. You may still complete and click Continue.
             </span>
           </p>
           <DialogFooter>
             <Button
-              onClick={() => setShowTimeoutDialog(false)}
+              onClick={() => setShowPhase1TimeoutDialog(false)}
               className="w-full bg-amber-500 hover:bg-amber-600 text-white"
             >
               继续作答 / Continue
@@ -245,6 +316,38 @@ export function QuestionPage({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Phase 2 timeout dialog */}
+      <Dialog open={showPhase2TimeoutDialog} onOpenChange={() => {}}>
+        <DialogContent
+          className="max-w-sm"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600">
+              <Clock className="w-5 h-5" />
+              时间已到 / Time's Up
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-600 leading-relaxed">
+            1 分钟时限已到，但您仍可完成评分并提交。
+            <br />
+            <span className="text-slate-400 text-xs">
+              The 1-minute limit has passed. You may still complete the ratings and submit.
+            </span>
+          </p>
+          <DialogFooter>
+            <Button
+              onClick={() => setShowPhase2TimeoutDialog(false)}
+              className="w-full bg-amber-500 hover:bg-amber-600 text-white"
+            >
+              继续评分 / Continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Top bar */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
@@ -266,10 +369,13 @@ export function QuestionPage({
             </span>
           </div>
 
-          {/* Timer */}
+          {/* Timer — shows phase label + countdown */}
           <div className={`flex items-center gap-2 ${timerTextColor}`}>
             <Clock className="w-4 h-4" />
-            <span className="text-sm font-mono font-bold">{formatTime(remaining)}</span>
+            <span className="text-xs text-slate-400 mr-0.5">
+              {isPhase2 ? "P2" : "P1"}
+            </span>
+            <span className="text-sm font-mono font-bold">{formatTime(displayRemaining)}</span>
           </div>
         </div>
         {/* Timer bar */}
@@ -283,21 +389,18 @@ export function QuestionPage({
 
       {/* Main content */}
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-5">
+
         {/* Question card */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="bg-slate-50 border-b border-slate-200 px-6 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                Question
-              </span>
-
-            </div>
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+              Question
+            </span>
             <span className="text-xs text-slate-400">{currentQuestion.itemId}</span>
           </div>
           <div className="px-6 py-5">
             <MathRenderer content={currentQuestion.question} />
           </div>
-          {/* Geometric figure image */}
           {currentQuestion.figureUrl && (
             <div className="px-6 pb-5 flex justify-center">
               <img
@@ -343,8 +446,12 @@ export function QuestionPage({
           </div>
         )}
 
-        {/* Judgment: Correct / Incorrect */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        {/* ── PHASE 1: Judgment ── */}
+        <div
+          className={`bg-white rounded-2xl shadow-sm border border-slate-200 p-6 transition-opacity ${
+            isPhase2 ? "opacity-60 pointer-events-none" : ""
+          }`}
+        >
           <p className="text-sm font-semibold text-slate-800 mb-1">
             Is the proposed answer correct? / 给出的答案是否正确？
           </p>
@@ -353,13 +460,19 @@ export function QuestionPage({
           </p>
           <RadioGroup
             value={judgment ?? ""}
-            onValueChange={(v) => setJudgment(v as "correct" | "incorrect")}
+            onValueChange={(v) => {
+              if (!isPhase2) setJudgment(v as "correct" | "incorrect");
+            }}
             className="flex gap-4"
           >
             <label
-              className={`flex-1 flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+              className={`flex-1 flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                isPhase2 ? "cursor-default" : "cursor-pointer"
+              } ${
                 judgment === "correct"
                   ? "border-emerald-500 bg-emerald-50"
+                  : isPhase2
+                  ? "border-slate-200"
                   : "border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/50"
               }`}
             >
@@ -376,9 +489,13 @@ export function QuestionPage({
             </label>
 
             <label
-              className={`flex-1 flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+              className={`flex-1 flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                isPhase2 ? "cursor-default" : "cursor-pointer"
+              } ${
                 judgment === "incorrect"
                   ? "border-red-500 bg-red-50"
+                  : isPhase2
+                  ? "border-slate-200"
                   : "border-slate-200 hover:border-red-300 hover:bg-red-50/50"
               }`}
             >
@@ -396,122 +513,146 @@ export function QuestionPage({
           </RadioGroup>
         </div>
 
-        {/* AJ only: Helpfulness rating (5 radio options per document spec) */}
-        {condition === "AJ" && (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-            <p className="text-sm font-semibold text-slate-800 mb-1">
-              How helpful was the justification in making your decision?
-            </p>
-            <p className="text-xs text-slate-500 mb-5">
-              解释对您做出判断有多大帮助？（必填 / Required）
-            </p>
-
-            <RadioGroup
-              value={helpfulness !== null ? String(helpfulness) : ""}
-              onValueChange={(v) => setHelpfulness(Number(v))}
-              className="space-y-2"
+        {/* Phase 1 Continue button */}
+        {!isPhase2 && (
+          <div className="flex justify-end">
+            <Button
+              onClick={handleContinue}
+              size="lg"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-10 min-w-40"
             >
-              {HELPFULNESS_OPTIONS.map((opt) => (
-                <label
-                  key={opt.value}
-                  className={`flex items-start gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
-                    helpfulness === opt.value
-                      ? "border-indigo-500 bg-indigo-50"
-                      : "border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/40"
-                  }`}
-                >
-                  <RadioGroupItem
-                    value={String(opt.value)}
-                    id={`help-${opt.value}`}
-                    className="mt-0.5 shrink-0"
-                  />
-                  <div className="min-w-0">
-                    <p
-                      className={`text-sm font-semibold ${
-                        helpfulness === opt.value ? "text-indigo-800" : "text-slate-700"
-                      }`}
-                    >
-                      {opt.label}
-                    </p>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      {opt.sublabel} · {opt.sublabelZh}
-                    </p>
-                  </div>
-                </label>
-              ))}
-            </RadioGroup>
-
-            {helpfulness === null && (
-              <p className="mt-3 text-xs text-amber-600 flex items-center gap-1">
-                <AlertTriangle className="w-3.5 h-3.5" />
-                请选择一个选项后才能进入下一题 / Please select an option to proceed.
-              </p>
-            )}
+              继续 / Continue →
+            </Button>
           </div>
         )}
 
-        {/* Confidence rating — all conditions */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-          <p className="text-sm font-semibold text-slate-800 mb-1">
-            你对刚才判断有多确定？
-          </p>
-          <p className="text-xs text-slate-500 mb-5">
-            How confident are you in your previous judgment? （必填 / Required）
-          </p>
-          <RadioGroup
-            value={confidenceRating !== null ? String(confidenceRating) : ""}
-            onValueChange={(v) => setConfidenceRating(Number(v))}
-            className="flex gap-2 flex-wrap"
-          >
-            {CONFIDENCE_OPTIONS.map((opt) => (
-              <label
-                key={opt.value}
-                className={`flex-1 min-w-[80px] flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 cursor-pointer transition-all text-center ${
-                  confidenceRating === opt.value
-                    ? "border-violet-500 bg-violet-50"
-                    : "border-slate-200 hover:border-violet-300 hover:bg-violet-50/40"
-                }`}
-              >
-                <RadioGroupItem
-                  value={String(opt.value)}
-                  id={`conf-${opt.value}`}
-                  className="sr-only"
-                />
-                <span className={`text-xl font-bold ${
-                  confidenceRating === opt.value ? "text-violet-700" : "text-slate-500"
-                }`}>{opt.value}</span>
-                <span className={`text-xs leading-tight ${
-                  confidenceRating === opt.value ? "text-violet-700 font-medium" : "text-slate-500"
-                }`}>{opt.labelZh}</span>
-                <span className={`text-xs leading-tight ${
-                  confidenceRating === opt.value ? "text-violet-600" : "text-slate-400"
-                }`}>{opt.labelEn}</span>
-              </label>
-            ))}
-          </RadioGroup>
-          {confidenceRating === null && (
-            <p className="mt-3 text-xs text-amber-600 flex items-center gap-1">
-              <AlertTriangle className="w-3.5 h-3.5" />
-              请选择一个选项后才能进入下一题 / Please select an option to proceed.
-            </p>
-          )}
-        </div>
+        {/* ── PHASE 2: Ratings (revealed after Continue) ── */}
+        {isPhase2 && (
+          <div className="space-y-5">
+            {/* Phase 2 header banner */}
+            <div className="bg-indigo-50 border border-indigo-200 rounded-2xl px-6 py-3 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-indigo-500 shrink-0" />
+              <p className="text-xs text-indigo-700 font-medium">
+                判断已锁定，请完成以下评分后提交 / Judgment locked. Please complete the ratings below.
+              </p>
+            </div>
 
-        {/* Submit */}
-        <div className="flex justify-end pb-8">
-          <Button
-            onClick={handleSubmit}
-            disabled={!canSubmit}
-            size="lg"
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-10 min-w-40 disabled:opacity-50"
-          >
-            {isSubmitting
-              ? "提交中... / Submitting..."
-              : isLastQuestion
-              ? "完成实验 / Finish"
-              : "下一题 / Next →"}
-          </Button>
-        </div>
+            {/* AJ only: Helpfulness rating */}
+            {condition === "AJ" && (
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <p className="text-sm font-semibold text-slate-800 mb-1">
+                  How helpful was the justification in making your decision?
+                </p>
+                <p className="text-xs text-slate-500 mb-5">
+                  解释对您做出判断有多大帮助？（必填 / Required）
+                </p>
+                <RadioGroup
+                  value={helpfulness !== null ? String(helpfulness) : ""}
+                  onValueChange={(v) => setHelpfulness(Number(v))}
+                  className="space-y-2"
+                >
+                  {HELPFULNESS_OPTIONS.map((opt) => (
+                    <label
+                      key={opt.value}
+                      className={`flex items-start gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
+                        helpfulness === opt.value
+                          ? "border-indigo-500 bg-indigo-50"
+                          : "border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/40"
+                      }`}
+                    >
+                      <RadioGroupItem
+                        value={String(opt.value)}
+                        id={`help-${opt.value}`}
+                        className="mt-0.5 shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <p
+                          className={`text-sm font-semibold ${
+                            helpfulness === opt.value ? "text-indigo-800" : "text-slate-700"
+                          }`}
+                        >
+                          {opt.label}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {opt.sublabel} · {opt.sublabelZh}
+                        </p>
+                      </div>
+                    </label>
+                  ))}
+                </RadioGroup>
+                {helpfulness === null && (
+                  <p className="mt-3 text-xs text-amber-600 flex items-center gap-1">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    请选择一个选项后才能提交 / Please select an option to proceed.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Confidence rating — all conditions */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+              <p className="text-sm font-semibold text-slate-800 mb-1">
+                你对刚才判断有多确定？
+              </p>
+              <p className="text-xs text-slate-500 mb-5">
+                How confident are you in your previous judgment?（必填 / Required）
+              </p>
+              <RadioGroup
+                value={confidenceRating !== null ? String(confidenceRating) : ""}
+                onValueChange={(v) => setConfidenceRating(Number(v))}
+                className="flex gap-2 flex-wrap"
+              >
+                {CONFIDENCE_OPTIONS.map((opt) => (
+                  <label
+                    key={opt.value}
+                    className={`flex-1 min-w-[80px] flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 cursor-pointer transition-all text-center ${
+                      confidenceRating === opt.value
+                        ? "border-violet-500 bg-violet-50"
+                        : "border-slate-200 hover:border-violet-300 hover:bg-violet-50/40"
+                    }`}
+                  >
+                    <RadioGroupItem
+                      value={String(opt.value)}
+                      id={`conf-${opt.value}`}
+                      className="sr-only"
+                    />
+                    <span className={`text-xl font-bold ${
+                      confidenceRating === opt.value ? "text-violet-700" : "text-slate-500"
+                    }`}>{opt.value}</span>
+                    <span className={`text-xs leading-tight ${
+                      confidenceRating === opt.value ? "text-violet-700 font-medium" : "text-slate-500"
+                    }`}>{opt.labelZh}</span>
+                    <span className={`text-xs leading-tight ${
+                      confidenceRating === opt.value ? "text-violet-600" : "text-slate-400"
+                    }`}>{opt.labelEn}</span>
+                  </label>
+                ))}
+              </RadioGroup>
+              {confidenceRating === null && (
+                <p className="mt-3 text-xs text-amber-600 flex items-center gap-1">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  请选择一个选项后才能提交 / Please select an option to proceed.
+                </p>
+              )}
+            </div>
+
+            {/* Submit button */}
+            <div className="flex justify-end pb-8">
+              <Button
+                onClick={doSubmit}
+                disabled={!canSubmitPhase2}
+                size="lg"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-10 min-w-40 disabled:opacity-50"
+              >
+                {isSubmitting
+                  ? "提交中... / Submitting..."
+                  : isLastQuestion
+                  ? "完成实验 / Finish"
+                  : "下一题 / Next →"}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
