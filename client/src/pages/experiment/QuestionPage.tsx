@@ -38,6 +38,14 @@ interface QuestionPageProps {
 const QUESTION_TIME_LIMIT = 180; // 3 minutes
 
 // Helpfulness options per document spec
+const CONFIDENCE_OPTIONS = [
+  { value: 1, labelZh: "1 = 很不确定", labelEn: "1 = Very uncertain" },
+  { value: 2, labelZh: "2 = 不太确定", labelEn: "2 = Uncertain" },
+  { value: 3, labelZh: "3 = 一般确定", labelEn: "3 = Neutral" },
+  { value: 4, labelZh: "4 = 比较确定", labelEn: "4 = Confident" },
+  { value: 5, labelZh: "5 = 很确定", labelEn: "5 = Very confident" },
+] as const;
+
 const HELPFULNESS_OPTIONS = [
   {
     value: 1,
@@ -82,6 +90,7 @@ export function QuestionPage({
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [judgment, setJudgment] = useState<"correct" | "incorrect" | null>(null);
   const [helpfulness, setHelpfulness] = useState<number | null>(null);
+  const [confidenceRating, setConfidenceRating] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [timerActive, setTimerActive] = useState(true);
   const [showTimeoutDialog, setShowTimeoutDialog] = useState(false);
@@ -97,6 +106,7 @@ export function QuestionPage({
   useEffect(() => {
     setJudgment(null);
     setHelpfulness(null);
+    setConfidenceRating(null);
     setTimerActive(true);
     setShowTimeoutDialog(false);
     startTimeRef.current = Date.now();
@@ -142,6 +152,7 @@ export function QuestionPage({
         rtSeconds: Math.round(rt * 10) / 10,
         timedOut,
         helpfulness: condition === "AJ" ? (helpfulness ?? null) : null,
+        confidenceRating: confidenceRating ?? null,
         // Use capped elapsed time when timer has already expired
         // (override the elapsedSeconds which may keep counting)
       });
@@ -193,7 +204,10 @@ export function QuestionPage({
 
   // Determine if Next button should be enabled
   const canSubmit =
-    !!judgment && (condition !== "AJ" || helpfulness !== null) && !isSubmitting;
+    !!judgment &&
+    (condition !== "AJ" || helpfulness !== null) &&
+    confidenceRating !== null &&
+    !isSubmitting;
 
   return (
     <div
@@ -435,6 +449,53 @@ export function QuestionPage({
             )}
           </div>
         )}
+
+        {/* Confidence rating — all conditions */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+          <p className="text-sm font-semibold text-slate-800 mb-1">
+            你对刚才判断有多确定？
+          </p>
+          <p className="text-xs text-slate-500 mb-5">
+            How confident are you in your previous judgment? （必填 / Required）
+          </p>
+          <RadioGroup
+            value={confidenceRating !== null ? String(confidenceRating) : ""}
+            onValueChange={(v) => setConfidenceRating(Number(v))}
+            className="flex gap-2 flex-wrap"
+          >
+            {CONFIDENCE_OPTIONS.map((opt) => (
+              <label
+                key={opt.value}
+                className={`flex-1 min-w-[80px] flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 cursor-pointer transition-all text-center ${
+                  confidenceRating === opt.value
+                    ? "border-violet-500 bg-violet-50"
+                    : "border-slate-200 hover:border-violet-300 hover:bg-violet-50/40"
+                }`}
+              >
+                <RadioGroupItem
+                  value={String(opt.value)}
+                  id={`conf-${opt.value}`}
+                  className="sr-only"
+                />
+                <span className={`text-xl font-bold ${
+                  confidenceRating === opt.value ? "text-violet-700" : "text-slate-500"
+                }`}>{opt.value}</span>
+                <span className={`text-xs leading-tight ${
+                  confidenceRating === opt.value ? "text-violet-700 font-medium" : "text-slate-500"
+                }`}>{opt.labelZh}</span>
+                <span className={`text-xs leading-tight ${
+                  confidenceRating === opt.value ? "text-violet-600" : "text-slate-400"
+                }`}>{opt.labelEn}</span>
+              </label>
+            ))}
+          </RadioGroup>
+          {confidenceRating === null && (
+            <p className="mt-3 text-xs text-amber-600 flex items-center gap-1">
+              <AlertTriangle className="w-3.5 h-3.5" />
+              请选择一个选项后才能进入下一题 / Please select an option to proceed.
+            </p>
+          )}
+        </div>
 
         {/* Submit */}
         <div className="flex justify-end pb-8">

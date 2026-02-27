@@ -36,6 +36,13 @@
       "when": 1772095150210,
       "tag": "0004_short_loki",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1772172908307,
+      "tag": "0005_adorable_nebula",
+      "breakpoints": true
     }
   ]
 }
