@@ -13,13 +13,18 @@ interface ConsentPageProps {
 
 export function ConsentPage({ participantId, onConsented }: ConsentPageProps) {
   const [agreed, setAgreed] = useState(false);
+  const [showError, setShowError] = useState(false);
   const giveConsent = trpc.experiment.giveConsent.useMutation();
 
   const handleBegin = async () => {
     if (!agreed) {
-      toast.error("请先勾选同意参与本研究");
+      setShowError(true);
+      toast.error("请先勾选下方同意框 / Please check the agreement box below");
+      // Scroll to checkbox area
+      document.getElementById("agree-box")?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
+    setShowError(false);
     await giveConsent.mutateAsync({ participantId });
     onConsented();
   };
@@ -159,27 +164,52 @@ export function ConsentPage({ participantId, onConsented }: ConsentPageProps) {
             </TabsContent>
           </Tabs>
 
-          {/* Agreement checkbox */}
-          <div className="mt-6 flex items-start gap-3 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+          {/* Agreement checkbox — visually prominent */}
+          <div
+            id="agree-box"
+            className={`mt-6 flex items-start gap-3 p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer
+              ${agreed
+                ? "bg-indigo-50 border-indigo-400"
+                : showError
+                  ? "bg-red-50 border-red-400 shadow-md shadow-red-100 animate-pulse"
+                  : "bg-amber-50 border-amber-300 hover:border-amber-400"
+              }`}
+            onClick={() => {
+              setAgreed((v) => !v);
+              setShowError(false);
+            }}
+          >
             <Checkbox
               id="agree"
               checked={agreed}
-              onCheckedChange={(v) => setAgreed(v === true)}
-              className="mt-0.5"
+              onCheckedChange={(v) => {
+                setAgreed(v === true);
+                setShowError(false);
+              }}
+              className={`mt-0.5 h-5 w-5 flex-shrink-0 ${showError && !agreed ? "border-red-500" : ""}`}
+              onClick={(e) => e.stopPropagation()}
             />
-            <label htmlFor="agree" className="text-sm text-slate-700 cursor-pointer leading-relaxed">
-              我已年满 18 周岁，已阅读并理解以上说明，同意自愿参加本研究。
-              <br />
-              <span className="text-slate-500">I am at least 18 years old, have read and understood the information above, and agree to participate voluntarily.</span>
-            </label>
+            <div>
+              <label htmlFor="agree" className="text-sm font-medium text-slate-800 cursor-pointer leading-relaxed select-none">
+                我已年满 18 周岁，已阅读并理解以上说明，同意自愿参加本研究。
+                <br />
+                <span className="text-slate-500 font-normal">I am at least 18 years old, have read and understood the information above, and agree to participate voluntarily.</span>
+              </label>
+              {showError && !agreed && (
+                <p className="mt-2 text-sm font-semibold text-red-600 flex items-center gap-1">
+                  <span>⚠</span>
+                  <span>请先勾选此处再继续 / Please check this box to continue</span>
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="mt-6 flex justify-end">
             <Button
               onClick={handleBegin}
-              disabled={!agreed || giveConsent.isPending}
+              disabled={giveConsent.isPending}
               size="lg"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
+              className={`px-8 transition-all ${agreed ? "bg-indigo-600 hover:bg-indigo-700 text-white" : "bg-slate-300 text-slate-500 cursor-not-allowed"}`}
             >
               {giveConsent.isPending ? "处理中..." : "我同意并开始 / I agree and begin →"}
             </Button>
