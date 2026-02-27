@@ -40,41 +40,41 @@ const PHASE1_TIME_LIMIT = 180; // 3 minutes
 const PHASE2_TIME_LIMIT = 60;  // 1 minute
 
 const CONFIDENCE_OPTIONS = [
-  { value: 1, labelZh: "1 = 很不确定", labelEn: "1 = Very uncertain" },
-  { value: 2, labelZh: "2 = 不太确定", labelEn: "2 = Uncertain" },
-  { value: 3, labelZh: "3 = 一般确定", labelEn: "3 = Neutral" },
-  { value: 4, labelZh: "4 = 比较确定", labelEn: "4 = Confident" },
-  { value: 5, labelZh: "5 = 很确定", labelEn: "5 = Very confident" },
+  { value: 1, labelZh: "很不确定", labelEn: "Very uncertain" },
+  { value: 2, labelZh: "不太确定", labelEn: "Uncertain" },
+  { value: 3, labelZh: "一般确定", labelEn: "Neutral" },
+  { value: 4, labelZh: "比较确定", labelEn: "Confident" },
+  { value: 5, labelZh: "很确定", labelEn: "Very confident" },
 ] as const;
 
 const HELPFULNESS_OPTIONS = [
   {
     value: 1,
-    label: "1 — Very Unhelpful",
+    label: "Very Unhelpful",
     sublabel: "it confused or misled me",
     sublabelZh: "它使我感到困惑或误导了我",
   },
   {
     value: 2,
-    label: "2 — Somewhat Unhelpful",
+    label: "Somewhat Unhelpful",
     sublabel: "it didn't help much",
     sublabelZh: "它没有太大帮助",
   },
   {
     value: 3,
-    label: "3 — Neutral",
+    label: "Neutral",
     sublabel: "it neither helped nor hurt",
     sublabelZh: "它既没有帮助也没有妨碍",
   },
   {
     value: 4,
-    label: "4 — Somewhat Helpful",
+    label: "Somewhat Helpful",
     sublabel: "it provided useful information",
     sublabelZh: "它提供了有用的信息",
   },
   {
     value: 5,
-    label: "5 — Very Helpful",
+    label: "Very Helpful",
     sublabel: "it clearly supported my decision",
     sublabelZh: "它明确支持了我的判断",
   },
@@ -567,14 +567,19 @@ export function QuestionPage({
                       />
                       <div className="min-w-0">
                         <p
-                          className={`text-sm font-semibold ${
+                          className={`text-sm ${
                             helpfulness === opt.value ? "text-indigo-800" : "text-slate-700"
                           }`}
                         >
                           {opt.label}
                         </p>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {opt.sublabel} · {opt.sublabelZh}
+                        <p className={`text-sm mt-0.5 ${
+                          helpfulness === opt.value ? "text-indigo-800" : "text-slate-700"
+                        }`}>
+                          {opt.sublabelZh}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {opt.sublabel}
                         </p>
                       </div>
                     </label>
@@ -605,7 +610,7 @@ export function QuestionPage({
                 {CONFIDENCE_OPTIONS.map((opt) => (
                   <label
                     key={opt.value}
-                    className={`flex-1 min-w-[80px] flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 cursor-pointer transition-all text-center ${
+                    className={`flex-1 min-w-[80px] flex flex-col items-center gap-1 p-3 rounded-xl border-2 cursor-pointer transition-all text-center ${
                       confidenceRating === opt.value
                         ? "border-violet-500 bg-violet-50"
                         : "border-slate-200 hover:border-violet-300 hover:bg-violet-50/40"
@@ -616,15 +621,12 @@ export function QuestionPage({
                       id={`conf-${opt.value}`}
                       className="sr-only"
                     />
-                    <span className={`text-xl font-bold ${
-                      confidenceRating === opt.value ? "text-violet-700" : "text-slate-500"
-                    }`}>{opt.value}</span>
                     <span className={`text-xs leading-tight ${
-                      confidenceRating === opt.value ? "text-violet-700 font-medium" : "text-slate-500"
-                    }`}>{opt.labelZh}</span>
-                    <span className={`text-xs leading-tight ${
-                      confidenceRating === opt.value ? "text-violet-600" : "text-slate-400"
+                      confidenceRating === opt.value ? "text-violet-700" : "text-slate-600"
                     }`}>{opt.labelEn}</span>
+                    <span className={`text-xs leading-tight ${
+                      confidenceRating === opt.value ? "text-violet-700" : "text-slate-600"
+                    }`}>{opt.labelZh}</span>
                   </label>
                 ))}
               </RadioGroup>
