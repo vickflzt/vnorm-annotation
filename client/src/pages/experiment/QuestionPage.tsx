@@ -276,11 +276,7 @@ export function QuestionPage({
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
                 Question
               </span>
-              {currentQuestion.subject && (
-                <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">
-                  {currentQuestion.subject}
-                </span>
-              )}
+
             </div>
             <span className="text-xs text-slate-400">{currentQuestion.itemId}</span>
           </div>

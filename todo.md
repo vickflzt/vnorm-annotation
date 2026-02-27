@@ -84,3 +84,4 @@
 - [x] FN05 数据库内容已正确（前端 React Query 缓存问题，被试刷新页面即可）
 - [x] FP05 response 渲染错误：Step 2 的 underbrace 公式改为独立块级 $$...$$，消除不配对 $ 导致的文字粘连乱码
 - [x] 修改判断区域英文副标题为 "Please judge based on the information shown above"
+- [x] 删除 QuestionPage 中 QUESTION 旁边的蓝色类别标签（subject badge），所有题目均不显示
