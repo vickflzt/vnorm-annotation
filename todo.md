@@ -83,3 +83,4 @@
 - [x] 修复 FN05 渲染错误：直接修正数据库中 question（向量改为行内 $...$ 格式）和 response（align* 用 $$ 包裹，换行符修正）
 - [x] FN05 数据库内容已正确（前端 React Query 缓存问题，被试刷新页面即可）
 - [x] FP05 response 渲染错误：Step 2 的 underbrace 公式改为独立块级 $$...$$，消除不配对 $ 导致的文字粘连乱码
+- [x] 修改判断区域英文副标题为 "Please judge based on the information shown above"

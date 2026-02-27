@@ -339,7 +339,7 @@ export function QuestionPage({
             Is the proposed answer correct? / 给出的答案是否正确？
           </p>
           <p className="text-xs text-slate-500 mb-4">
-            请根据页面所提供的信息做出判断 / Judge based only on the information shown above.
+            请根据页面所提供的信息做出判断 / Please judge based on the information shown above
           </p>
           <RadioGroup
             value={judgment ?? ""}
