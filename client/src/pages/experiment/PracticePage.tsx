@@ -18,8 +18,10 @@ interface PracticePageProps {
 }
 
 // Same timing as real experiment
-const PHASE1_TIME_LIMIT = 180; // 3 minutes
-const PHASE2_TIME_LIMIT = 60;  // 1 minute
+const PHASE1_SOFT_LIMIT = 180;  // 3 min — show warning dialog
+const PHASE1_HARD_LIMIT = 240;  // 4 min — auto-skip (practice: just advance)
+const PHASE2_SOFT_LIMIT = 60;   // 1 min — show warning dialog
+const PHASE2_HARD_LIMIT = 90;   // 90s  — auto-advance (practice: just advance)
 
 // Practice question data — intentionally wrong answer (2+3=6) so participants can judge "Incorrect"
 const PRACTICE_QUESTION = {
@@ -50,73 +52,122 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
   // Phase 1 state
   const [judgment, setJudgment] = useState<"correct" | "incorrect" | null>(null);
   const [phase1TimerActive, setPhase1TimerActive] = useState(true);
-  const [showPhase1TimeoutDialog, setShowPhase1TimeoutDialog] = useState(false);
+  const [showPhase1SoftDialog, setShowPhase1SoftDialog] = useState(false);
+  const phase1SoftFiredRef = useRef(false);
+  const phase1HardFiredRef = useRef(false);
   const phase1RtRef = useRef<number>(0);
 
   // Phase 2 state
   const [helpfulness, setHelpfulness] = useState<number | null>(null);
   const [confidenceRating, setConfidenceRating] = useState<number | null>(null);
   const [phase2TimerActive, setPhase2TimerActive] = useState(false);
-  const [showPhase2TimeoutDialog, setShowPhase2TimeoutDialog] = useState(false);
+  const [showPhase2SoftDialog, setShowPhase2SoftDialog] = useState(false);
+  const phase2SoftFiredRef = useRef(false);
+  const phase2HardFiredRef = useRef(false);
 
-  const handlePhase1Timeout = useCallback(() => {
-    setPhase1TimerActive(false);
-    setShowPhase1TimeoutDialog(true);
-  }, []);
-
-  const handlePhase2Timeout = useCallback(() => {
-    setPhase2TimerActive(false);
-    setShowPhase2TimeoutDialog(true);
+  // ── Phase 1 countdown ──────────────────────────────────────────────────────
+  const handlePhase1HardExpire = useCallback(() => {
+    // handled in elapsed watcher
   }, []);
 
   const {
     remaining: phase1Remaining,
     elapsedSeconds: phase1Elapsed,
-    reset: resetPhase2Timer,
+    reset: resetPhase1Timer,
   } = useCountdown({
-    durationSeconds: PHASE1_TIME_LIMIT,
-    onExpire: handlePhase1Timeout,
+    durationSeconds: PHASE1_HARD_LIMIT,
+    onExpire: handlePhase1HardExpire,
     active: phase1TimerActive,
   });
 
+  useEffect(() => {
+    if (!phase1TimerActive || phase === "rating") return;
+
+    if (phase1Elapsed >= PHASE1_SOFT_LIMIT && !phase1SoftFiredRef.current) {
+      phase1SoftFiredRef.current = true;
+      setShowPhase1SoftDialog(true);
+    }
+
+    if (phase1Elapsed >= PHASE1_HARD_LIMIT && !phase1HardFiredRef.current) {
+      phase1HardFiredRef.current = true;
+      // Practice: just advance without saving data
+      setPhase1TimerActive(false);
+      onCompleted();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase1Elapsed, phase1TimerActive, phase]);
+
+  // ── Phase 2 countdown ──────────────────────────────────────────────────────
+  const handlePhase2HardExpire = useCallback(() => {
+    // handled in elapsed watcher
+  }, []);
+
   const {
     remaining: phase2Remaining,
+    elapsedSeconds: phase2Elapsed,
+    reset: resetPhase2Timer,
   } = useCountdown({
-    durationSeconds: PHASE2_TIME_LIMIT,
-    onExpire: handlePhase2Timeout,
+    durationSeconds: PHASE2_HARD_LIMIT,
+    onExpire: handlePhase2HardExpire,
     active: phase2TimerActive,
   });
 
+  useEffect(() => {
+    if (!phase2TimerActive || phase !== "rating") return;
+
+    if (phase2Elapsed >= PHASE2_SOFT_LIMIT && !phase2SoftFiredRef.current) {
+      phase2SoftFiredRef.current = true;
+      setShowPhase2SoftDialog(true);
+    }
+
+    if (phase2Elapsed >= PHASE2_HARD_LIMIT && !phase2HardFiredRef.current) {
+      phase2HardFiredRef.current = true;
+      // Practice: just advance without saving data
+      setPhase2TimerActive(false);
+      onCompleted();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase2Elapsed, phase2TimerActive, phase]);
+
+  // ── Timer display ──────────────────────────────────────────────────────────
   const isPhase2 = phase === "rating";
+  const displayElapsed = isPhase2 ? phase2Elapsed : phase1Elapsed;
   const displayRemaining = isPhase2 ? phase2Remaining : phase1Remaining;
-  const displayLimit = isPhase2 ? PHASE2_TIME_LIMIT : PHASE1_TIME_LIMIT;
-  const timerPercent = (displayRemaining / displayLimit) * 100;
-  const timerColor =
-    displayRemaining > displayLimit * 0.33
-      ? "bg-emerald-500"
-      : displayRemaining > displayLimit * 0.17
-      ? "bg-amber-500"
-      : "bg-red-500";
-  const timerTextColor =
-    displayRemaining > displayLimit * 0.33
-      ? "text-emerald-700"
-      : displayRemaining > displayLimit * 0.17
-      ? "text-amber-700"
-      : "text-red-700";
+  const displaySoftLimit = isPhase2 ? PHASE2_SOFT_LIMIT : PHASE1_SOFT_LIMIT;
+  const displayHardLimit = isPhase2 ? PHASE2_HARD_LIMIT : PHASE1_HARD_LIMIT;
+  const isOvertime = displayElapsed > displaySoftLimit;
+
+  const timerPercent = isOvertime
+    ? Math.min(100, ((displayElapsed - displaySoftLimit) / (displayHardLimit - displaySoftLimit)) * 100)
+    : (displayRemaining / displaySoftLimit) * 100;
+
+  const timerColor = isOvertime ? "bg-red-500"
+    : displayRemaining > displaySoftLimit * 0.33 ? "bg-emerald-500"
+    : displayRemaining > displaySoftLimit * 0.17 ? "bg-amber-500"
+    : "bg-red-500";
+
+  const timerTextColor = isOvertime ? "text-red-700"
+    : displayRemaining > displaySoftLimit * 0.33 ? "text-emerald-700"
+    : displayRemaining > displaySoftLimit * 0.17 ? "text-amber-700"
+    : "text-red-700";
 
   const formatTime = (s: number) => {
-    const m = Math.floor(s / 60);
-    const sec = Math.floor(s % 60);
+    const abs = Math.abs(s);
+    const m = Math.floor(abs / 60);
+    const sec = Math.floor(abs % 60);
     return `${m}:${sec.toString().padStart(2, "0")}`;
   };
 
+  const overtimeElapsed = displayElapsed - displaySoftLimit;
+  const hardLimitRemaining = displayHardLimit - displayElapsed;
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleContinue = () => {
     if (!judgment) {
       toast.error("请先做出正确/错误判断 / Please select Correct or Incorrect first");
       return;
     }
-    const rt = phase1TimerActive ? phase1Elapsed : PHASE1_TIME_LIMIT;
-    phase1RtRef.current = Math.round(rt * 10) / 10;
+    phase1RtRef.current = Math.round(phase1Elapsed * 10) / 10;
     setPhase1TimerActive(false);
     setPhase("rating");
     setPhase2TimerActive(true);
@@ -148,13 +199,16 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
     (condition !== "AJ" || helpfulness !== null) &&
     confidenceRating !== null;
 
+  // Suppress unused warning — PRACTICE_QUESTION kept for reference
+  void PRACTICE_QUESTION;
+
   return (
     <div
       className="min-h-screen bg-slate-50 select-none"
       style={{ userSelect: "none", WebkitUserSelect: "none" }}
     >
-      {/* Phase 1 timeout dialog */}
-      <Dialog open={showPhase1TimeoutDialog} onOpenChange={() => {}}>
+      {/* Phase 1 soft-limit dialog (180s) */}
+      <Dialog open={showPhase1SoftDialog} onOpenChange={() => {}}>
         <DialogContent
           className="max-w-sm"
           onPointerDownOutside={(e) => e.preventDefault()}
@@ -167,15 +221,15 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-slate-600 leading-relaxed">
-            本题 3 分钟时限已到，但您仍可继续作答并点击继续。
+            本题 3 分钟时限已到，您还有 <span className="font-semibold text-red-600">60 秒</span>延长时间继续作答。超时后系统将自动跳过本题。
             <br />
             <span className="text-slate-400 text-xs">
-              The 3-minute limit has passed. You may still complete and click Continue.
+              The 3-minute limit has passed. You have a 60-second extension. The question will be skipped automatically if time runs out.
             </span>
           </p>
           <DialogFooter>
             <Button
-              onClick={() => setShowPhase1TimeoutDialog(false)}
+              onClick={() => setShowPhase1SoftDialog(false)}
               className="w-full bg-amber-500 hover:bg-amber-600 text-white"
             >
               继续作答 / Continue
@@ -184,8 +238,8 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Phase 2 timeout dialog */}
-      <Dialog open={showPhase2TimeoutDialog} onOpenChange={() => {}}>
+      {/* Phase 2 soft-limit dialog (60s) */}
+      <Dialog open={showPhase2SoftDialog} onOpenChange={() => {}}>
         <DialogContent
           className="max-w-sm"
           onPointerDownOutside={(e) => e.preventDefault()}
@@ -198,15 +252,15 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-slate-600 leading-relaxed">
-            1 分钟时限已到，但您仍可完成评分并提交。
+            评分时限已到，您还有 <span className="font-semibold text-red-600">30 秒</span>延长时间完成评分。超时后系统将自动提交。
             <br />
             <span className="text-slate-400 text-xs">
-              The 1-minute limit has passed. You may still complete the ratings and submit.
+              The rating time limit has passed. You have a 30-second extension. Ratings will be submitted automatically if time runs out.
             </span>
           </p>
           <DialogFooter>
             <Button
-              onClick={() => setShowPhase2TimeoutDialog(false)}
+              onClick={() => setShowPhase2SoftDialog(false)}
               className="w-full bg-amber-500 hover:bg-amber-600 text-white"
             >
               继续评分 / Continue
@@ -234,7 +288,13 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
             <span className="text-xs text-slate-400 mr-0.5">
               {isPhase2 ? "P2" : "P1"}
             </span>
-            <span className="text-sm font-mono font-bold">{formatTime(displayRemaining)}</span>
+            {isOvertime ? (
+              <span className="text-sm font-mono font-bold text-red-600">
+                +{formatTime(overtimeElapsed)}
+              </span>
+            ) : (
+              <span className="text-sm font-mono font-bold">{formatTime(displayRemaining)}</span>
+            )}
           </div>
         </div>
         <div className="h-1 bg-slate-100">
@@ -244,6 +304,20 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
           />
         </div>
       </div>
+
+      {/* Overtime warning banner */}
+      {isOvertime && (
+        <div className="bg-red-50 border-b border-red-200">
+          <div className="max-w-4xl mx-auto px-4 py-2 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
+            <p className="text-xs text-red-700 font-medium">
+              {isPhase2
+                ? `评分时限已超出，系统将在 ${Math.max(0, Math.ceil(hardLimitRemaining))} 秒后自动提交 / Rating time exceeded. Auto-submit in ${Math.max(0, Math.ceil(hardLimitRemaining))}s.`
+                : `作答时限已超出，系统将在 ${Math.max(0, Math.ceil(hardLimitRemaining))} 秒后自动跳过本题 / Time exceeded. Auto-skip in ${Math.max(0, Math.ceil(hardLimitRemaining))}s.`}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Main content */}
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-5">
@@ -268,9 +342,9 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
             <li className="flex items-start gap-2">
               <Clock className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-600" />
               <span>
-                <strong>计时提醒：</strong>每题第一部分限时 3 分钟，超时后会弹出提示，但仍可继续作答。第二部分限时 1 分钟，同样超时后弹出提示。
+                <strong>计时提醒：</strong>每题第一部分限时 3 分钟，超时后弹出提示并延长 60 秒，再超时将自动跳过本题。第二部分限时 1 分钟，超时后延长 30 秒，再超时将自动提交。
                 <br />
-                <span className="text-amber-600">Timing: Part 1 has a 3-minute limit; Part 2 has a 1-minute limit. A warning appears when time is up, but you can still continue.</span>
+                <span className="text-amber-600">Timing: Part 1 has a 3-min limit (+60s extension, then auto-skip). Part 2 has a 1-min limit (+30s extension, then auto-submit).</span>
               </span>
             </li>
             <li className="flex items-start gap-2">
@@ -318,7 +392,6 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
               <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
                 LLM Response / 给出的解答过程（Answer + Justification）
               </span>
-              {/* Reading reminder badge */}
               <span className="inline-flex items-center gap-1.5 bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-sm">
                 <BookOpen className="w-3.5 h-3.5" />
                 请认真阅读 / Read carefully

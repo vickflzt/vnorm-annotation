@@ -35,9 +35,12 @@ interface QuestionPageProps {
   onTerminated: () => void;
 }
 
-// Phase 1: judgment (3 min), Phase 2: helpfulness + confidence (1 min)
-const PHASE1_TIME_LIMIT = 180; // 3 minutes
-const PHASE2_TIME_LIMIT = 60;  // 1 minute
+// Phase 1: judgment (3 min soft limit, +1 min extension → 4 min hard limit)
+// Phase 2: ratings (1 min soft limit, +30s extension → 90s hard limit)
+const PHASE1_SOFT_LIMIT = 180;   // 3 min — show warning dialog
+const PHASE1_HARD_LIMIT = 240;   // 4 min — auto-fail, skip to next question
+const PHASE2_SOFT_LIMIT = 60;    // 1 min — show warning dialog
+const PHASE2_HARD_LIMIT = 90;    // 90s  — auto-fail, auto-submit
 
 const CONFIDENCE_OPTIONS = [
   { value: 1, labelZh: "很不确定", labelEn: "Very uncertain" },
@@ -96,7 +99,9 @@ export function QuestionPage({
   // Phase 1 state
   const [judgment, setJudgment] = useState<"correct" | "incorrect" | null>(null);
   const [phase1TimerActive, setPhase1TimerActive] = useState(true);
-  const [showPhase1TimeoutDialog, setShowPhase1TimeoutDialog] = useState(false);
+  const [showPhase1SoftDialog, setShowPhase1SoftDialog] = useState(false);
+  const phase1SoftFiredRef = useRef(false);
+  const phase1HardFiredRef = useRef(false);
   // Captured rt for phase 1 when user clicks Continue
   const phase1RtRef = useRef<number>(0);
 
@@ -104,7 +109,9 @@ export function QuestionPage({
   const [helpfulness, setHelpfulness] = useState<number | null>(null);
   const [confidenceRating, setConfidenceRating] = useState<number | null>(null);
   const [phase2TimerActive, setPhase2TimerActive] = useState(false);
-  const [showPhase2TimeoutDialog, setShowPhase2TimeoutDialog] = useState(false);
+  const [showPhase2SoftDialog, setShowPhase2SoftDialog] = useState(false);
+  const phase2SoftFiredRef = useRef(false);
+  const phase2HardFiredRef = useRef(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -122,46 +129,87 @@ export function QuestionPage({
     setConfidenceRating(null);
     setPhase1TimerActive(true);
     setPhase2TimerActive(false);
-    setShowPhase1TimeoutDialog(false);
-    setShowPhase2TimeoutDialog(false);
+    setShowPhase1SoftDialog(false);
+    setShowPhase2SoftDialog(false);
+    phase1SoftFiredRef.current = false;
+    phase1HardFiredRef.current = false;
+    phase2SoftFiredRef.current = false;
+    phase2HardFiredRef.current = false;
     phase1RtRef.current = 0;
   }, [currentIndex]);
 
-  // Phase 1 timeout handler
-  const handlePhase1Timeout = useCallback(() => {
-    if (isSubmitting) return;
-    setPhase1TimerActive(false);
-    setShowPhase1TimeoutDialog(true);
+  // ── Phase 1 countdown ──────────────────────────────────────────────────────
+  // We use PHASE1_HARD_LIMIT as the "duration" so the hook counts all the way
+  // to 240s. We manually watch elapsed to fire the soft-limit dialog at 180s.
+  const handlePhase1HardExpire = useCallback(() => {
+    // This fires at 240s — auto-fail phase 1, skip to next question
+    if (phase1HardFiredRef.current || isSubmitting) return;
+    phase1HardFiredRef.current = true;
+    // Will be handled in the elapsed watcher below
   }, [isSubmitting]);
 
-  // Phase 2 timeout handler
-  const handlePhase2Timeout = useCallback(() => {
-    if (isSubmitting) return;
-    setPhase2TimerActive(false);
-    setShowPhase2TimeoutDialog(true);
-  }, [isSubmitting]);
-
-  // Phase 1 countdown (3 min)
   const {
     remaining: phase1Remaining,
     elapsedSeconds: phase1Elapsed,
     reset: resetPhase1Timer,
   } = useCountdown({
-    durationSeconds: PHASE1_TIME_LIMIT,
-    onExpire: handlePhase1Timeout,
+    durationSeconds: PHASE1_HARD_LIMIT,
+    onExpire: handlePhase1HardExpire,
     active: phase1TimerActive && !isSubmitting,
   });
 
-  // Phase 2 countdown (1 min)
+  // Watch phase 1 elapsed to fire soft-limit dialog at 180s and hard-limit auto-fail at 240s
+  useEffect(() => {
+    if (!phase1TimerActive || phase === "rating" || isSubmitting) return;
+
+    // Soft limit: show dialog once at 180s
+    if (phase1Elapsed >= PHASE1_SOFT_LIMIT && !phase1SoftFiredRef.current) {
+      phase1SoftFiredRef.current = true;
+      setShowPhase1SoftDialog(true);
+    }
+
+    // Hard limit: auto-fail at 240s
+    if (phase1Elapsed >= PHASE1_HARD_LIMIT && !phase1HardFiredRef.current) {
+      phase1HardFiredRef.current = true;
+      doAutoFailPhase1();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase1Elapsed, phase1TimerActive, phase, isSubmitting]);
+
+  // ── Phase 2 countdown ──────────────────────────────────────────────────────
+  const handlePhase2HardExpire = useCallback(() => {
+    // Fires at 90s — handled in elapsed watcher
+    if (phase2HardFiredRef.current || isSubmitting) return;
+    phase2HardFiredRef.current = true;
+  }, [isSubmitting]);
+
   const {
     remaining: phase2Remaining,
     elapsedSeconds: phase2Elapsed,
     reset: resetPhase2Timer,
   } = useCountdown({
-    durationSeconds: PHASE2_TIME_LIMIT,
-    onExpire: handlePhase2Timeout,
+    durationSeconds: PHASE2_HARD_LIMIT,
+    onExpire: handlePhase2HardExpire,
     active: phase2TimerActive && !isSubmitting,
   });
+
+  // Watch phase 2 elapsed to fire soft-limit dialog at 60s and hard-limit auto-submit at 90s
+  useEffect(() => {
+    if (!phase2TimerActive || phase !== "rating" || isSubmitting) return;
+
+    // Soft limit: show dialog once at 60s
+    if (phase2Elapsed >= PHASE2_SOFT_LIMIT && !phase2SoftFiredRef.current) {
+      phase2SoftFiredRef.current = true;
+      setShowPhase2SoftDialog(true);
+    }
+
+    // Hard limit: auto-fail at 90s
+    if (phase2Elapsed >= PHASE2_HARD_LIMIT && !phase2HardFiredRef.current) {
+      phase2HardFiredRef.current = true;
+      doAutoFailPhase2();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase2Elapsed, phase2TimerActive, phase, isSubmitting]);
 
   // Anti-cheat
   useAntiCheat({
@@ -172,54 +220,144 @@ export function QuestionPage({
     onTerminated,
   });
 
-  // Determine which timer to show in top bar
-  const activePhase = phase;
-  const displayRemaining = activePhase === "judgment" ? phase1Remaining : phase2Remaining;
-  const displayLimit = activePhase === "judgment" ? PHASE1_TIME_LIMIT : PHASE2_TIME_LIMIT;
-  const timerPercent = (displayRemaining / displayLimit) * 100;
-  const timerColor =
-    displayRemaining > (displayLimit * 0.33)
-      ? "bg-emerald-500"
-      : displayRemaining > (displayLimit * 0.17)
-      ? "bg-amber-500"
-      : "bg-red-500";
-  const timerTextColor =
-    displayRemaining > (displayLimit * 0.33)
-      ? "text-emerald-700"
-      : displayRemaining > (displayLimit * 0.17)
-      ? "text-amber-700"
-      : "text-red-700";
+  // ── Auto-fail helpers ──────────────────────────────────────────────────────
+
+  /**
+   * Phase 1 hard timeout: judgment = null, confidence = null, helpfulness = null.
+   * Directly submit and skip to next question (no phase 2).
+   */
+  const doAutoFailPhase1 = useCallback(async () => {
+    if (isSubmitting || !currentQuestion) return;
+    setIsSubmitting(true);
+    setPhase1TimerActive(false);
+
+    try {
+      const result = await submitResponse.mutateAsync({
+        participantId,
+        itemId: currentQuestion.itemId,
+        category: currentQuestion.category as "TP" | "TN" | "FP" | "FN" | "GSM-CHECK",
+        questionIndex: currentIndex,
+        responseCorrect: null,       // fail
+        rtSeconds: PHASE1_HARD_LIMIT,
+        timedOut: true,
+        helpfulness: null,           // fail
+        confidenceRating: null,      // fail
+        confidenceRtSeconds: null,
+      });
+
+      if (result.isCompleted) {
+        onCompleted();
+      } else {
+        setCurrentIndex(result.nextIndex);
+        setIsSubmitting(false);
+        resetPhase1Timer();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    } catch {
+      setIsSubmitting(false);
+      toast.error("自动提交失败，请手动继续 / Auto-submit failed, please continue manually");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSubmitting, currentQuestion, currentIndex, participantId]);
+
+  /**
+   * Phase 2 hard timeout: confidence = null, helpfulness = null (judgment kept).
+   * Auto-submit with whatever judgment was recorded in phase 1.
+   */
+  const doAutoFailPhase2 = useCallback(async () => {
+    if (isSubmitting || !currentQuestion) return;
+    setIsSubmitting(true);
+    setPhase2TimerActive(false);
+
+    try {
+      const result = await submitResponse.mutateAsync({
+        participantId,
+        itemId: currentQuestion.itemId,
+        category: currentQuestion.category as "TP" | "TN" | "FP" | "FN" | "GSM-CHECK",
+        questionIndex: currentIndex,
+        responseCorrect: judgment === null ? null : judgment === "correct",   // keep whatever was selected (may be null if skipped)
+        rtSeconds: phase1RtRef.current,
+        timedOut: true,
+        helpfulness: null,           // fail
+        confidenceRating: null,      // fail
+        confidenceRtSeconds: PHASE2_HARD_LIMIT,
+      });
+
+      if (result.isCompleted) {
+        onCompleted();
+      } else {
+        setCurrentIndex(result.nextIndex);
+        setIsSubmitting(false);
+        resetPhase1Timer();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    } catch {
+      setIsSubmitting(false);
+      toast.error("自动提交失败，请手动继续 / Auto-submit failed, please continue manually");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSubmitting, currentQuestion, currentIndex, participantId, judgment]);
+
+  // ── Timer display ──────────────────────────────────────────────────────────
+
+  // After soft limit, show overtime (elapsed - soft limit) counting up in red
+  const isPhase1Overtime = phase === "judgment" && phase1Elapsed > PHASE1_SOFT_LIMIT;
+  const isPhase2Overtime = phase === "rating" && phase2Elapsed > PHASE2_SOFT_LIMIT;
+
+  // Display: during overtime show elapsed time (counting up); before that show remaining
+  const displayElapsed = phase === "judgment" ? phase1Elapsed : phase2Elapsed;
+  const displayRemaining = phase === "judgment" ? phase1Remaining : phase2Remaining;
+  const displaySoftLimit = phase === "judgment" ? PHASE1_SOFT_LIMIT : PHASE2_SOFT_LIMIT;
+  const displayHardLimit = phase === "judgment" ? PHASE1_HARD_LIMIT : PHASE2_HARD_LIMIT;
+  const isOvertime = phase === "judgment" ? isPhase1Overtime : isPhase2Overtime;
+
+  // Timer bar: during normal time use remaining/soft; during overtime use (elapsed-soft)/(hard-soft)
+  const timerPercent = isOvertime
+    ? Math.min(100, ((displayElapsed - displaySoftLimit) / (displayHardLimit - displaySoftLimit)) * 100)
+    : (displayRemaining / displaySoftLimit) * 100;
+
+  const timerColor = isOvertime ? "bg-red-500" : displayRemaining > displaySoftLimit * 0.33
+    ? "bg-emerald-500"
+    : displayRemaining > displaySoftLimit * 0.17
+    ? "bg-amber-500"
+    : "bg-red-500";
+
+  const timerTextColor = isOvertime ? "text-red-700"
+    : displayRemaining > displaySoftLimit * 0.33 ? "text-emerald-700"
+    : displayRemaining > displaySoftLimit * 0.17 ? "text-amber-700"
+    : "text-red-700";
 
   const formatTime = (s: number) => {
-    const m = Math.floor(s / 60);
-    const sec = Math.floor(s % 60);
+    const abs = Math.abs(s);
+    const m = Math.floor(abs / 60);
+    const sec = Math.floor(abs % 60);
     return `${m}:${sec.toString().padStart(2, "0")}`;
   };
 
-  // Handle "Continue" button (end of phase 1)
+  // During overtime, show +elapsed since soft limit
+  const overtimeElapsed = displayElapsed - displaySoftLimit;
+  const hardLimitRemaining = displayHardLimit - displayElapsed;
+
+  // ── Phase 1 Continue button ────────────────────────────────────────────────
   const handleContinue = () => {
     if (!judgment) {
       toast.error("请先做出正确/错误判断 / Please select Correct or Incorrect first");
       return;
     }
-    // Capture phase 1 RT: if timer still active use elapsed, else cap at limit
-    const rt = phase1TimerActive ? phase1Elapsed : PHASE1_TIME_LIMIT;
-    phase1RtRef.current = Math.round(rt * 10) / 10;
+    // Capture phase 1 RT
+    phase1RtRef.current = Math.round(phase1Elapsed * 10) / 10;
 
-    // Stop phase 1 timer, start phase 2 timer
     setPhase1TimerActive(false);
     setPhase("rating");
-    // Phase 2 timer starts when user sees the rating section
     setPhase2TimerActive(true);
     resetPhase2Timer();
 
-    // Scroll down so the new rating section is visible
     setTimeout(() => {
       window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
     }, 100);
   };
 
-  // Handle final submit (end of phase 2)
+  // ── Normal phase 2 submit ──────────────────────────────────────────────────
   const doSubmit = async () => {
     if (isSubmitting || !currentQuestion) return;
 
@@ -239,9 +377,7 @@ export function QuestionPage({
     setIsSubmitting(true);
     setPhase2TimerActive(false);
 
-    // Phase 2 RT: if timer still active use elapsed, else cap at limit
-    const confRt = phase2TimerActive ? phase2Elapsed : PHASE2_TIME_LIMIT;
-    const confidenceRtSeconds = Math.round(confRt * 10) / 10;
+    const confRt = Math.round(phase2Elapsed * 10) / 10;
 
     try {
       const result = await submitResponse.mutateAsync({
@@ -251,10 +387,10 @@ export function QuestionPage({
         questionIndex: currentIndex,
         responseCorrect: judgment === "correct",
         rtSeconds: phase1RtRef.current,
-        timedOut: !phase1TimerActive && phase1Remaining <= 0,
+        timedOut: false,
         helpfulness: condition === "AJ" ? (helpfulness ?? null) : null,
         confidenceRating: confidenceRating ?? null,
-        confidenceRtSeconds,
+        confidenceRtSeconds: confRt,
       });
 
       if (result.isCompleted) {
@@ -286,8 +422,8 @@ export function QuestionPage({
       className="min-h-screen bg-slate-50 select-none"
       style={{ userSelect: "none", WebkitUserSelect: "none" }}
     >
-      {/* Phase 1 timeout dialog */}
-      <Dialog open={showPhase1TimeoutDialog} onOpenChange={() => {}}>
+      {/* Phase 1 soft-limit dialog (180s) */}
+      <Dialog open={showPhase1SoftDialog} onOpenChange={() => {}}>
         <DialogContent
           className="max-w-sm"
           onPointerDownOutside={(e) => e.preventDefault()}
@@ -300,15 +436,15 @@ export function QuestionPage({
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-slate-600 leading-relaxed">
-            本题 3 分钟时限已到，但您仍可继续作答并点击继续。
+            本题 3 分钟时限已到，您还有 <span className="font-semibold text-red-600">60 秒</span>延长时间继续作答。超时后系统将自动跳过本题。
             <br />
             <span className="text-slate-400 text-xs">
-              The 3-minute limit has passed. You may still complete and click Continue.
+              The 3-minute limit has passed. You have a 60-second extension. The question will be skipped automatically if time runs out.
             </span>
           </p>
           <DialogFooter>
             <Button
-              onClick={() => setShowPhase1TimeoutDialog(false)}
+              onClick={() => setShowPhase1SoftDialog(false)}
               className="w-full bg-amber-500 hover:bg-amber-600 text-white"
             >
               继续作答 / Continue
@@ -317,8 +453,8 @@ export function QuestionPage({
         </DialogContent>
       </Dialog>
 
-      {/* Phase 2 timeout dialog */}
-      <Dialog open={showPhase2TimeoutDialog} onOpenChange={() => {}}>
+      {/* Phase 2 soft-limit dialog (60s) */}
+      <Dialog open={showPhase2SoftDialog} onOpenChange={() => {}}>
         <DialogContent
           className="max-w-sm"
           onPointerDownOutside={(e) => e.preventDefault()}
@@ -331,15 +467,15 @@ export function QuestionPage({
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-slate-600 leading-relaxed">
-            1 分钟时限已到，但您仍可完成评分并提交。
+            评分时限已到，您还有 <span className="font-semibold text-red-600">30 秒</span>延长时间完成评分。超时后系统将自动提交。
             <br />
             <span className="text-slate-400 text-xs">
-              The 1-minute limit has passed. You may still complete the ratings and submit.
+              The rating time limit has passed. You have a 30-second extension. Ratings will be submitted automatically if time runs out.
             </span>
           </p>
           <DialogFooter>
             <Button
-              onClick={() => setShowPhase2TimeoutDialog(false)}
+              onClick={() => setShowPhase2SoftDialog(false)}
               className="w-full bg-amber-500 hover:bg-amber-600 text-white"
             >
               继续评分 / Continue
@@ -369,13 +505,19 @@ export function QuestionPage({
             </span>
           </div>
 
-          {/* Timer — shows phase label + countdown */}
+          {/* Timer — shows phase label + time */}
           <div className={`flex items-center gap-2 ${timerTextColor}`}>
             <Clock className="w-4 h-4" />
             <span className="text-xs text-slate-400 mr-0.5">
               {isPhase2 ? "P2" : "P1"}
             </span>
-            <span className="text-sm font-mono font-bold">{formatTime(displayRemaining)}</span>
+            {isOvertime ? (
+              <span className="text-sm font-mono font-bold text-red-600">
+                +{formatTime(overtimeElapsed)}
+              </span>
+            ) : (
+              <span className="text-sm font-mono font-bold">{formatTime(displayRemaining)}</span>
+            )}
           </div>
         </div>
         {/* Timer bar */}
@@ -386,6 +528,20 @@ export function QuestionPage({
           />
         </div>
       </div>
+
+      {/* Overtime warning banner */}
+      {isOvertime && !isSubmitting && (
+        <div className="bg-red-50 border-b border-red-200">
+          <div className="max-w-4xl mx-auto px-4 py-2 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
+            <p className="text-xs text-red-700 font-medium">
+              {isPhase2
+                ? `评分时限已超出，系统将在 ${Math.max(0, Math.ceil(hardLimitRemaining))} 秒后自动提交 / Rating time exceeded. Auto-submit in ${Math.max(0, Math.ceil(hardLimitRemaining))}s.`
+                : `作答时限已超出，系统将在 ${Math.max(0, Math.ceil(hardLimitRemaining))} 秒后自动跳过本题 / Time exceeded. Auto-skip in ${Math.max(0, Math.ceil(hardLimitRemaining))}s.`}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Main content */}
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-5">
