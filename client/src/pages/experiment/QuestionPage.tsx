@@ -432,14 +432,14 @@ export function QuestionPage({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-amber-600">
               <Clock className="w-5 h-5" />
-              时间已到 / Time's Up
+              Time's Up / 时间已到
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-slate-600 leading-relaxed">
-            本题 3 分钟时限已到，您还有 <span className="font-semibold text-red-600">60 秒</span>延长时间继续作答。超时后系统将自动跳过本题。
+            The 3-minute limit has passed. You have a <span className="font-semibold text-red-600">60-second</span> extension. The question will be skipped automatically if time runs out.
             <br />
             <span className="text-slate-400 text-xs">
-              The 3-minute limit has passed. You have a 60-second extension. The question will be skipped automatically if time runs out.
+              本题 3 分钟时限已到，您还有 60 秒延长时间继续作答。超时后系统将自动跳过本题。
             </span>
           </p>
           <DialogFooter>
@@ -447,7 +447,7 @@ export function QuestionPage({
               onClick={() => setShowPhase1SoftDialog(false)}
               className="w-full bg-amber-500 hover:bg-amber-600 text-white"
             >
-              继续作答 / Continue
+              Continue / 继续作答
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -463,14 +463,14 @@ export function QuestionPage({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-amber-600">
               <Clock className="w-5 h-5" />
-              时间已到 / Time's Up
+              Time's Up / 时间已到
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-slate-600 leading-relaxed">
-            评分时限已到，您还有 <span className="font-semibold text-red-600">30 秒</span>延长时间完成评分。超时后系统将自动提交。
+            The rating time limit has passed. You have a <span className="font-semibold text-red-600">30-second</span> extension. Ratings will be submitted automatically if time runs out.
             <br />
             <span className="text-slate-400 text-xs">
-              The rating time limit has passed. You have a 30-second extension. Ratings will be submitted automatically if time runs out.
+              评分时限已到，您还有 30 秒延长时间完成评分。超时后系统将自动提交。
             </span>
           </p>
           <DialogFooter>
@@ -478,7 +478,7 @@ export function QuestionPage({
               onClick={() => setShowPhase2SoftDialog(false)}
               className="w-full bg-amber-500 hover:bg-amber-600 text-white"
             >
-              继续评分 / Continue
+              Continue / 继续评分
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -532,8 +532,8 @@ export function QuestionPage({
             <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
             <p className="text-xs text-red-700 font-medium">
               {isPhase2
-                ? `评分时限已超出，系统将在 ${Math.max(0, Math.ceil(hardLimitRemaining))} 秒后自动提交 / Rating time exceeded. Auto-submit in ${Math.max(0, Math.ceil(hardLimitRemaining))}s.`
-                : `作答时限已超出，系统将在 ${Math.max(0, Math.ceil(hardLimitRemaining))} 秒后自动跳过本题 / Time exceeded. Auto-skip in ${Math.max(0, Math.ceil(hardLimitRemaining))}s.`}
+                ? `Rating time exceeded. Auto-submit in ${Math.max(0, Math.ceil(hardLimitRemaining))}s. / 评分时限已超出，系统将在 ${Math.max(0, Math.ceil(hardLimitRemaining))} 秒后自动提交`
+                : `Time exceeded. Auto-skip in ${Math.max(0, Math.ceil(hardLimitRemaining))}s. / 作答时限已超出，系统将在 ${Math.max(0, Math.ceil(hardLimitRemaining))} 秒后自动跳过本题`}
             </p>
           </div>
         </div>
@@ -608,7 +608,7 @@ export function QuestionPage({
             Is the proposed answer correct? / 给出的答案是否正确？
           </p>
           <p className="text-xs text-slate-500 mb-4">
-            请根据页面所提供的信息做出判断 / Please judge based on the information shown above
+            Please judge based on the information shown above / 请根据页面所提供的信息做出判断
           </p>
           <RadioGroup
             value={judgment ?? ""}
@@ -634,9 +634,9 @@ export function QuestionPage({
               />
               <div>
                 <p className={`font-semibold text-sm ${judgment === "correct" ? "text-emerald-800" : "text-slate-700"}`}>
-                  正确 / Correct
+                  Correct / 正确
                 </p>
-                <p className="text-xs text-slate-500">答案是正确的</p>
+                <p className="text-xs text-slate-500">The proposed answer is correct</p>
               </div>
             </label>
 
@@ -657,9 +657,9 @@ export function QuestionPage({
               />
               <div>
                 <p className={`font-semibold text-sm ${judgment === "incorrect" ? "text-red-800" : "text-slate-700"}`}>
-                  错误 / Incorrect
+                  Incorrect / 错误
                 </p>
-                <p className="text-xs text-slate-500">答案是错误的</p>
+                <p className="text-xs text-slate-500">The proposed answer is incorrect</p>
               </div>
             </label>
           </RadioGroup>
@@ -673,7 +673,7 @@ export function QuestionPage({
               size="lg"
               className="bg-indigo-600 hover:bg-indigo-700 text-white px-10 min-w-40"
             >
-              继续 / Continue →
+              Continue / 继续 →
             </Button>
           </div>
         )}
@@ -685,7 +685,7 @@ export function QuestionPage({
             <div className="bg-indigo-50 border border-indigo-200 rounded-2xl px-6 py-3 flex items-center gap-2">
               <Clock className="w-4 h-4 text-indigo-500 shrink-0" />
               <p className="text-xs text-indigo-700 font-medium">
-                判断已锁定，请完成以下评分后提交 / Judgment locked. Please complete the ratings below.
+                Judgment locked. Please complete the ratings below. / 判断已锁定，请完成以下评分后提交
               </p>
             </div>
 
@@ -696,7 +696,7 @@ export function QuestionPage({
                   How helpful was the justification in making your decision?
                 </p>
                 <p className="text-xs text-slate-500 mb-5">
-                  解释对您做出判断有多大帮助？（必填 / Required）
+                  How helpful was the justification? (必填 / Required)
                 </p>
                 <RadioGroup
                   value={helpfulness !== null ? String(helpfulness) : ""}
@@ -740,7 +740,7 @@ export function QuestionPage({
                 {helpfulness === null && (
                   <p className="mt-3 text-xs text-amber-600 flex items-center gap-1">
                     <AlertTriangle className="w-3.5 h-3.5" />
-                    请选择一个选项后才能提交 / Please select an option to proceed.
+                    Please select an option to proceed. / 请选择一个选项后才能提交
                   </p>
                 )}
               </div>
@@ -749,10 +749,10 @@ export function QuestionPage({
             {/* Confidence rating — all conditions */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
               <p className="text-sm font-semibold text-slate-800 mb-1">
-                你对刚才判断有多确定？
+                How confident are you in your previous judgment?
               </p>
               <p className="text-xs text-slate-500 mb-5">
-                How confident are you in your previous judgment?（必填 / Required）
+                你对刚才的判断有多确定？（必填 / Required）
               </p>
               <RadioGroup
                 value={confidenceRating !== null ? String(confidenceRating) : ""}
@@ -785,7 +785,7 @@ export function QuestionPage({
               {confidenceRating === null && (
                 <p className="mt-3 text-xs text-amber-600 flex items-center gap-1">
                   <AlertTriangle className="w-3.5 h-3.5" />
-                  请选择一个选项后才能提交 / Please select an option to proceed.
+                  Please select an option to proceed. / 请选择一个选项后才能提交
                 </p>
               )}
             </div>
@@ -799,10 +799,10 @@ export function QuestionPage({
                 className="bg-indigo-600 hover:bg-indigo-700 text-white px-10 min-w-40 disabled:opacity-50"
               >
                 {isSubmitting
-                  ? "提交中... / Submitting..."
+                  ? "Submitting... / 提交中..."
                   : isLastQuestion
-                  ? "完成实验 / Finish"
-                  : "下一题 / Next →"}
+                  ? "Finish / 完成实验"
+                  : "Next / 下一题 →"}
               </Button>
             </div>
           </div>

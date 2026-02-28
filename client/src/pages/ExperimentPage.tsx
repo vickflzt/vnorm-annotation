@@ -107,12 +107,12 @@ export default function ExperimentPage() {
             <h1 className="text-4xl font-bold text-slate-900 mb-3">
               V-Norm Annotation Study
             </h1>
-            <p className="text-lg text-slate-600 mb-2">数学答案判断实验</p>
+            <p className="text-lg text-slate-600 mb-2">Math Answer Judgment Study</p>
             <p className="text-sm text-slate-500 max-w-lg mx-auto leading-relaxed">
-              本研究旨在了解人类如何判断 AI 生成的数学答案是否正确。参与本实验约需 45–50 分钟。
+              This study investigates how humans evaluate AI-generated math answers. The study takes approximately 45–50 minutes.
             </p>
             <p className="text-sm text-slate-400 max-w-lg mx-auto mt-1">
-              This study investigates how humans evaluate AI-generated math answers. The study takes approximately 45–50 minutes.
+              本研究旨在了解人类如何判断 AI 生成的数学答案是否正确。参与本实验约需 45–50 分钟。
             </p>
           </div>
 
@@ -128,15 +128,15 @@ export default function ExperimentPage() {
           <div className="grid grid-cols-3 gap-4 text-left">
             <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
               <p className="text-2xl font-bold text-indigo-600 mb-1">16</p>
-              <p className="text-xs text-slate-600">道数学题<br />Math questions</p>
+              <p className="text-xs text-slate-600">Math questions<br />道数学题</p>
             </div>
             <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
               <p className="text-2xl font-bold text-indigo-600 mb-1">3 min</p>
-              <p className="text-xs text-slate-600">每题时限<br />Per question</p>
+              <p className="text-xs text-slate-600">Per question<br />每题时限</p>
             </div>
             <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
-              <p className="text-2xl font-bold text-indigo-600 mb-1">匿名</p>
-              <p className="text-xs text-slate-600">数据保护<br />Anonymous</p>
+              <p className="text-2xl font-bold text-indigo-600 mb-1">Anon.</p>
+              <p className="text-xs text-slate-600">Anonymous<br />匿名保护</p>
             </div>
           </div>
 
@@ -150,14 +150,14 @@ export default function ExperimentPage() {
               {createSession.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  准备中...
+                  Preparing...
                 </>
               ) : (
-                "点击开始参与 / Click to Participate →"
+                "Click to Participate / 点击开始参与 →"
               )}
             </Button>
             <p className="text-xs text-slate-400">
-              点击后将进入知情同意页面 · Clicking will take you to the consent form
+              Clicking will take you to the consent form · 点击后将进入知情同意页面
             </p>
           </div>
         </div>
@@ -170,7 +170,7 @@ export default function ExperimentPage() {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center space-y-3">
           <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mx-auto" />
-          <p className="text-slate-600 text-sm">正在分配题目 / Assigning questions...</p>
+          <p className="text-slate-600 text-sm">Assigning questions... / 正在分配题目</p>
         </div>
       </div>
     );

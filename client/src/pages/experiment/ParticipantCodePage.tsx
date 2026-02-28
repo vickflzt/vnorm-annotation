@@ -44,17 +44,17 @@ export function ParticipantCodePage({ participantId, onCodeSubmitted }: Particip
 
         {/* Title */}
         <div className="text-center space-y-1">
-          <h2 className="text-xl font-bold text-slate-900">输入被试编号</h2>
-          <p className="text-sm text-slate-500">Enter Your Participant Code</p>
+          <h2 className="text-xl font-bold text-slate-900">Enter Your Participant Code</h2>
+          <p className="text-sm text-slate-500">输入被试编号</p>
         </div>
 
         {/* Instructions */}
         <div className="bg-slate-50 rounded-xl p-4 text-sm text-slate-600 space-y-1 leading-relaxed">
           <p>
-            请输入实验负责人分配给您的<strong>被试编号</strong>。
+            Please enter the participant code assigned to you by the experimenter.
           </p>
           <p className="text-slate-400 text-xs">
-            Please enter the participant code assigned to you by the experimenter.
+            请输入实验负责人分配给您的<strong>被试编号</strong>。
           </p>
         </div>
 
@@ -93,19 +93,19 @@ export function ParticipantCodePage({ participantId, onCodeSubmitted }: Particip
           {submitCode.isPending ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              提交中...
+              Submitting...
             </>
           ) : (
-            "确认并继续 / Confirm & Continue →"
+            "Confirm & Continue / 确认并继续 →"
           )}
         </Button>
 
         {/* System ID note */}
         <p className="text-xs text-slate-400 text-center leading-relaxed">
-          系统已自动为您分配匿名 ID，该编号仅用于将您的数据与实验分组关联。
+          Your anonymous system ID has been auto-assigned. This code links your data to your assigned group.
           <br />
           <span className="text-slate-300">
-            Your anonymous system ID has been auto-assigned. This code links your data to your assigned group.
+            系统已自动为您分配匿名 ID，该编号仅用于将您的数据与实验分组关联。
           </span>
         </p>
       </div>

@@ -221,10 +221,10 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-slate-600 leading-relaxed">
-            本题 3 分钟时限已到，您还有 <span className="font-semibold text-red-600">60 秒</span>延长时间继续作答。超时后系统将自动跳过本题。
+            The 3-minute limit has passed. You have a <span className="font-semibold text-red-600">60-second</span> extension. The question will be skipped automatically if time runs out.
             <br />
             <span className="text-slate-400 text-xs">
-              The 3-minute limit has passed. You have a 60-second extension. The question will be skipped automatically if time runs out.
+              本题 3 分钟时限已到，您还有 60 秒延长时间继续作答。超时后系统将自动跳过本题。
             </span>
           </p>
           <DialogFooter>
@@ -232,7 +232,7 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
               onClick={() => setShowPhase1SoftDialog(false)}
               className="w-full bg-amber-500 hover:bg-amber-600 text-white"
             >
-              继续作答 / Continue
+              Continue / 继续作答
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -252,10 +252,10 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-slate-600 leading-relaxed">
-            评分时限已到，您还有 <span className="font-semibold text-red-600">30 秒</span>延长时间完成评分。超时后系统将自动提交。
+            The rating time limit has passed. You have a <span className="font-semibold text-red-600">30-second</span> extension. Ratings will be submitted automatically if time runs out.
             <br />
             <span className="text-slate-400 text-xs">
-              The rating time limit has passed. You have a 30-second extension. Ratings will be submitted automatically if time runs out.
+              评分时限已到，您还有 30 秒延长时间完成评分。超时后系统将自动提交。
             </span>
           </p>
           <DialogFooter>
@@ -263,7 +263,7 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
               onClick={() => setShowPhase2SoftDialog(false)}
               className="w-full bg-amber-500 hover:bg-amber-600 text-white"
             >
-              继续评分 / Continue
+              Continue / 继续评分
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -308,8 +308,8 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
             <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
             <p className="text-xs text-red-700 font-medium">
               {isPhase2
-                ? `评分时限已超出，系统将在 ${Math.max(0, Math.ceil(hardLimitRemaining))} 秒后自动提交 / Rating time exceeded. Auto-submit in ${Math.max(0, Math.ceil(hardLimitRemaining))}s.`
-                : `作答时限已超出，系统将在 ${Math.max(0, Math.ceil(hardLimitRemaining))} 秒后自动跳过本题 / Time exceeded. Auto-skip in ${Math.max(0, Math.ceil(hardLimitRemaining))}s.`}
+                ? `Rating time exceeded. Auto-submit in ${Math.max(0, Math.ceil(hardLimitRemaining))}s. / 评分时限已超出，系统将在 ${Math.max(0, Math.ceil(hardLimitRemaining))} 秒后自动提交`
+                : `Time exceeded. Auto-skip in ${Math.max(0, Math.ceil(hardLimitRemaining))}s. / 作答时限已超出，系统将在 ${Math.max(0, Math.ceil(hardLimitRemaining))} 秒后自动跳过本题`}
             </p>
           </div>
         </div>
@@ -323,41 +323,41 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
           <div className="flex items-center gap-2">
             <Info className="w-5 h-5 text-amber-600 shrink-0" />
             <p className="text-sm font-bold text-amber-800">
-              练习题 — 熟悉答题流程 / Practice Trial — Get Familiar with the Task
+              Practice Trial — Get Familiar with the Task / 练习题 — 熟悉答题流程
             </p>
           </div>
           <ul className="space-y-1.5 text-xs text-amber-700 leading-relaxed list-none pl-0">
             <li className="flex items-start gap-2">
               <Lock className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-600" />
               <span>
-                <strong>第一部分（判断）：</strong>完成判断后点击"继续"，答案将立即锁定，无法修改。
+                <strong>Part 1 (Judgment):</strong> Once you click "Continue", your answer is locked and cannot be changed.
                 <br />
-                <span className="text-amber-600">Part 1 (Judgment): Once you click "Continue", your answer is locked and cannot be changed.</span>
+                <span className="text-amber-600">第一部分（判断）：完成判断后点击“继续”，答案将立即锁定，无法修改。</span>
               </span>
             </li>
             <li className="flex items-start gap-2">
               <Clock className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-600" />
               <span>
-                <strong>计时提醒：</strong>每题第一部分限时 3 分钟，超时后弹出提示并延长 60 秒，再超时将自动跳过本题。第二部分限时 1 分钟，超时后延长 30 秒，再超时将自动提交。
+                <strong>Timing:</strong> Part 1 has a 3-min limit (+60s extension, then auto-skip). Part 2 has a 1-min limit (+30s extension, then auto-submit).
                 <br />
-                <span className="text-amber-600">Timing: Part 1 has a 3-min limit (+60s extension, then auto-skip). Part 2 has a 1-min limit (+30s extension, then auto-submit).</span>
+                <span className="text-amber-600">计时提醒：每题第一部分限时 3 分钟，超时后弹出提示并延长 60 秒，再超时将自动跳过本题。第二部分限时 1 分钟，超时后延长 30 秒，再超时将自动提交。</span>
               </span>
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-600" />
               <span>
-                <strong>第二部分（评分）：</strong>完成评分后点击"下一题"，将直接翻到下一题，无法回看。
+                <strong>Part 2 (Ratings):</strong> After submitting, you will move directly to the next question with no option to go back.
                 <br />
-                <span className="text-amber-600">Part 2 (Ratings): After submitting, you will move directly to the next question with no option to go back.</span>
+                <span className="text-amber-600">第二部分（评分）：完成评分后点击“下一题”，将直接翻到下一题，无法回看。</span>
               </span>
             </li>
             {condition === "AJ" && (
               <li className="flex items-start gap-2">
                 <BookOpen className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-600" />
                 <span>
-                  <strong>AJ 组提醒：</strong>请认真阅读下方模型的解答过程（LLM Response），它是您做出判断的重要依据。
+                  <strong>AJ Group:</strong> Please read the LLM Response carefully — it is intended to inform your judgment.
                   <br />
-                  <span className="text-amber-600">AJ Group: Please read the LLM Response carefully — it is intended to inform your judgment.</span>
+                  <span className="text-amber-600">AJ 组提醒：请认真阅读下方模型的解答过程（LLM Response），它是您做出判断的重要依据。</span>
                 </span>
               </li>
             )}
@@ -390,7 +390,7 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
               </span>
               <span className="inline-flex items-center gap-1.5 bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-sm">
                 <BookOpen className="w-3.5 h-3.5" />
-                请认真阅读 / Read carefully
+                Read carefully / 请认真阅读
               </span>
             </div>
             <div className="px-6 py-5 text-sm text-slate-700 leading-relaxed space-y-2">
@@ -427,7 +427,7 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
             Is the proposed answer correct? / 给出的答案是否正确？
           </p>
           <p className="text-xs text-slate-500 mb-4">
-            请根据页面所提供的信息做出判断 / Please judge based on the information shown above
+            Please judge based on the information shown above / 请根据页面所提供的信息做出判断
           </p>
           <RadioGroup
             value={judgment ?? ""}
@@ -453,9 +453,9 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
               />
               <div>
                 <p className={`font-semibold text-sm ${judgment === "correct" ? "text-emerald-800" : "text-slate-700"}`}>
-                  正确 / Correct
+                  Correct / 正确
                 </p>
-                <p className="text-xs text-slate-500">答案是正确的</p>
+                <p className="text-xs text-slate-500">The proposed answer is correct</p>
               </div>
             </label>
 
@@ -476,9 +476,9 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
               />
               <div>
                 <p className={`font-semibold text-sm ${judgment === "incorrect" ? "text-red-800" : "text-slate-700"}`}>
-                  错误 / Incorrect
+                  Incorrect / 错误
                 </p>
-                <p className="text-xs text-slate-500">答案是错误的</p>
+                <p className="text-xs text-slate-500">The proposed answer is incorrect</p>
               </div>
             </label>
           </RadioGroup>
@@ -492,7 +492,7 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
               size="lg"
               className="bg-indigo-600 hover:bg-indigo-700 text-white px-10 min-w-40"
             >
-              继续 / Continue →
+              Continue / 继续 →
             </Button>
           </div>
         )}
@@ -504,7 +504,7 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
             <div className="bg-indigo-50 border border-indigo-200 rounded-2xl px-6 py-3 flex items-center gap-2">
               <Lock className="w-4 h-4 text-indigo-500 shrink-0" />
               <p className="text-xs text-indigo-700 font-medium">
-                判断已锁定，请完成以下评分后提交 / Judgment locked. Please complete the ratings below.
+                Judgment locked. Please complete the ratings below. / 判断已锁定，请完成以下评分后提交
               </p>
             </div>
 
@@ -515,7 +515,7 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
                   How helpful was the justification in making your decision?
                 </p>
                 <p className="text-xs text-slate-500 mb-5">
-                  解释对您做出判断有多大帮助？（必填 / Required）
+                  How helpful was the justification? (必填 / Required)
                 </p>
                 <RadioGroup
                   value={helpfulness !== null ? String(helpfulness) : ""}
@@ -553,7 +553,7 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
                 {helpfulness === null && (
                   <p className="mt-3 text-xs text-amber-600 flex items-center gap-1">
                     <AlertTriangle className="w-3.5 h-3.5" />
-                    请选择一个选项后才能提交 / Please select an option to proceed.
+                    Please select an option to proceed. / 请选择一个选项后才能提交
                   </p>
                 )}
               </div>
@@ -562,10 +562,10 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
             {/* Confidence rating */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
               <p className="text-sm font-semibold text-slate-800 mb-1">
-                你对刚才判断有多确定？
+                How confident are you in your previous judgment?
               </p>
               <p className="text-xs text-slate-500 mb-5">
-                How confident are you in your previous judgment?（必填 / Required）
+                你对刚才的判断有多确定？（必填 / Required）
               </p>
               <RadioGroup
                 value={confidenceRating !== null ? String(confidenceRating) : ""}
@@ -611,7 +611,7 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
                 size="lg"
                 className="bg-indigo-600 hover:bg-indigo-700 text-white px-10 min-w-40 disabled:opacity-50"
               >
-                完成练习 / Finish Practice →
+                Finish Practice / 完成练习 →
               </Button>
             </div>
           </div>

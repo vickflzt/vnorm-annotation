@@ -40,8 +40,8 @@ export function ConsentPage({ participantId, onConsented }: ConsentPageProps) {
             </div>
             <span className="text-sm font-medium opacity-80">V-Norm Annotation Study</span>
           </div>
-          <h1 className="text-2xl font-bold">知情同意书</h1>
-          <p className="text-indigo-200 text-sm mt-1">Informed Consent Form</p>
+          <h1 className="text-2xl font-bold">Informed Consent Form</h1>
+          <p className="text-indigo-200 text-sm mt-1">知情同意书</p>
         </div>
 
         <div className="p-8">
@@ -191,14 +191,14 @@ export function ConsentPage({ participantId, onConsented }: ConsentPageProps) {
             />
             <div>
               <label htmlFor="agree" className="text-sm font-medium text-slate-800 cursor-pointer leading-relaxed select-none">
-                我已年满 18 周岁，已阅读并理解以上说明，同意自愿参加本研究。
+                I am at least 18 years old, have read and understood the information above, and agree to participate voluntarily.
                 <br />
-                <span className="text-slate-500 font-normal">I am at least 18 years old, have read and understood the information above, and agree to participate voluntarily.</span>
+                <span className="text-slate-500 font-normal">我已年满 18 周岁，已阅读并理解以上说明，同意自愿参加本研究。</span>
               </label>
               {showError && !agreed && (
                 <p className="mt-2 text-sm font-semibold text-red-600 flex items-center gap-1">
                   <span>⚠</span>
-                  <span>请先勾选此处再继续 / Please check this box to continue</span>
+                  <span>Please check this box to continue / 请先勾选此处再继续</span>
                 </p>
               )}
             </div>
@@ -211,7 +211,7 @@ export function ConsentPage({ participantId, onConsented }: ConsentPageProps) {
               size="lg"
               className={`px-8 transition-all ${agreed ? "bg-indigo-600 hover:bg-indigo-700 text-white" : "bg-slate-300 text-slate-500 cursor-not-allowed"}`}
             >
-              {giveConsent.isPending ? "处理中..." : "我同意并开始 / I agree and begin →"}
+              {giveConsent.isPending ? "Processing..." : "I agree and begin / 我同意并开始 →"}
             </Button>
           </div>
         </div>
