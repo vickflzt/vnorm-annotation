@@ -109,7 +109,7 @@ export default function ExperimentPage() {
             </h1>
             <p className="text-lg text-slate-600 mb-2">Math Answer Judgment Study</p>
             <p className="text-sm text-slate-500 max-w-lg mx-auto leading-relaxed">
-              This study investigates how humans evaluate AI-generated math answers. The study takes approximately 45–50 minutes.
+              This study will investigate how different users evaluate AI responses to math questions. This study is expected to take 45-50 minutes.
             </p>
             <p className="text-sm text-slate-400 max-w-lg mx-auto mt-1">
               本研究旨在了解人类如何判断 AI 生成的数学答案是否正确。参与本实验约需 45–50 分钟。
