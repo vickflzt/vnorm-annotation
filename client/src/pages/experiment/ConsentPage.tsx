@@ -19,8 +19,7 @@ export function ConsentPage({ participantId, onConsented }: ConsentPageProps) {
   const handleBegin = async () => {
     if (!agreed) {
       setShowError(true);
-      toast.error("请先勾选下方同意框 / Please check the agreement box below");
-      // Scroll to checkbox area
+      toast.error("Please check the agreement box below / 请先勾选下方同意框");
       document.getElementById("agree-box")?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
@@ -40,123 +39,143 @@ export function ConsentPage({ participantId, onConsented }: ConsentPageProps) {
             </div>
             <span className="text-sm font-medium opacity-80">V-Norm Annotation Study</span>
           </div>
-          <h1 className="text-2xl font-bold">Informed Consent Form</h1>
+          <h1 className="text-2xl font-bold">Consent Form</h1>
           <p className="text-indigo-200 text-sm mt-1">知情同意书</p>
         </div>
 
         <div className="p-8">
-          <Tabs defaultValue="zh">
+          <Tabs defaultValue="en">
             <TabsList className="mb-6">
-              <TabsTrigger value="zh">中文</TabsTrigger>
               <TabsTrigger value="en">English</TabsTrigger>
+              <TabsTrigger value="zh">中文</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="zh">
-              <ScrollArea className="h-80 rounded-lg border border-slate-200 p-5 bg-slate-50">
-                <div className="space-y-4 text-sm text-slate-700 leading-relaxed">
-                  <p className="font-semibold text-slate-900">欢迎参加本研究。</p>
+            {/* ── English tab ── */}
+            <TabsContent value="en">
+              <ScrollArea className="h-96 rounded-lg border border-slate-200 p-5 bg-slate-50">
+                <div className="space-y-5 text-sm text-slate-700 leading-relaxed">
+                  <p className="font-semibold text-slate-900">
+                    Welcome, and thank you for considering participation in this study.
+                  </p>
                   <p>
-                    本研究旨在了解人在判断数学题答案是否正确时，如何使用所提供的信息（例如答案本身，或答案及其解释）。在实验中，您将看到若干数学题及对应的候选答案；在部分情况下，您还会看到一段解释。您的任务是根据页面提供的信息，判断该答案是否正确。
+                    The purpose of this study is to understand how everyday users determine whether a proposed answer to a math problem is correct based on the information provided. The information provided will include either the AI's answer to the math question alone, or the AI's answer together with its explanation. During the study, you will see a series of math questions with proposed answers; in some cases, you will also see a justification.
+                  </p>
+                  <p>
+                    Your task is to decide whether the proposed answer is correct or incorrect using only the information provided in this study.
                   </p>
 
                   <div>
-                    <p className="font-semibold text-slate-900 mb-2">您将需要做什么：</p>
+                    <p className="font-semibold text-slate-900 mb-2">What You Will Do</p>
                     <ul className="list-disc list-inside space-y-1">
-                      <li>阅读题目及给定内容；</li>
-                      <li>对每道题做出"正确 / 错误"的判断；</li>
-                      <li>在部分题目中，评价所提供解释对您判断是否有帮助；</li>
-                      <li>整个实验预计耗时约 45–50 分钟。</li>
+                      <li>Read each math question and its justification, if provided.</li>
+                      <li>For each question, determine whether the provided answer is correct or incorrect.</li>
+                      <li>For some questions, rate how helpful the provided justification was in making your decision.</li>
                     </ul>
                   </div>
 
                   <div>
-                    <p className="font-semibold text-slate-900 mb-2">可能风险与不适：</p>
+                    <p className="font-semibold text-slate-900 mb-2">Time Commitment</p>
                     <ul className="list-disc list-inside space-y-1">
-                      <li>本研究风险较低，接近日常做题或阅读判断任务；</li>
-                      <li>您可能会感到轻微疲劳、注意力消耗，或因时间限制产生少量压力。</li>
+                      <li>The study is expected to take approximately 45–50 minutes.</li>
                     </ul>
                   </div>
 
                   <div>
-                    <p className="font-semibold text-slate-900 mb-2">参与方式：</p>
+                    <p className="font-semibold text-slate-900 mb-2">Risks or Discomforts</p>
                     <ul className="list-disc list-inside space-y-1">
-                      <li>您的参与是完全自愿的；</li>
-                      <li>您可以在任何时候退出实验，而不会受到处罚或产生任何不利后果；</li>
-                      <li>如果您选择退出，您可以直接关闭页面。</li>
+                      <li>We do not expect any notable risks.</li>
+                      <li>This study involves only problem-solving or reading-based judgment tasks.</li>
                     </ul>
                   </div>
 
                   <div>
-                    <p className="font-semibold text-slate-900 mb-2">隐私与数据使用：</p>
+                    <p className="font-semibold text-slate-900 mb-2">Voluntary Participation</p>
                     <ul className="list-disc list-inside space-y-1">
-                      <li>本研究将记录您的作答结果和作答时间；</li>
-                      <li>我们不会在研究报告中使用能够直接识别您身份的信息；</li>
-                      <li>您的数据将仅用于学术研究与分析。</li>
+                      <li>Your participation is completely voluntary.</li>
+                      <li>You may stop participating at any time without penalty.</li>
+                      <li>If you choose to stop, you may simply close the page.</li>
                     </ul>
                   </div>
 
                   <div>
-                    <p className="font-semibold text-slate-900 mb-2">参与要求：</p>
+                    <p className="font-semibold text-slate-900 mb-2">Privacy and Data Use</p>
                     <ul className="list-disc list-inside space-y-1">
-                      <li>请勿使用草稿纸、计算器、搜索引擎、聊天机器人或任何其他外部工具；</li>
-                      <li>请根据您自己的判断完成任务；</li>
-                      <li>请勿切换标签页、截图或复制题目内容，否则实验将被自动终止。</li>
+                      <li>We will record your responses and response times.</li>
+                      <li>We will not collect any personally identifying information as part of this research.</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <p className="font-semibold text-slate-900 mb-2">Participant Requirements</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>Do not use scratch paper, calculators, search engines, chatbots, or any other external tools. Rely only on the content provided in this study.</li>
+                      <li>Complete the task using your own judgment only.</li>
+                      <li>Do not switch tabs, take screenshots, or copy content. Any violations will automatically terminate the session.</li>
                     </ul>
                   </div>
                 </div>
               </ScrollArea>
             </TabsContent>
 
-            <TabsContent value="en">
-              <ScrollArea className="h-80 rounded-lg border border-slate-200 p-5 bg-slate-50">
-                <div className="space-y-4 text-sm text-slate-700 leading-relaxed">
-                  <p className="font-semibold text-slate-900">Welcome, and thank you for considering participation in this study.</p>
+            {/* ── Chinese tab ── */}
+            <TabsContent value="zh">
+              <ScrollArea className="h-96 rounded-lg border border-slate-200 p-5 bg-slate-50">
+                <div className="space-y-5 text-sm text-slate-700 leading-relaxed">
+                  <p className="font-semibold text-slate-900">欢迎您，并感谢您考虑参加本研究。</p>
                   <p>
-                    The purpose of this study is to understand how people judge whether a proposed answer to a math problem is correct based on the information provided (for example, the answer alone, or the answer together with an explanation). During the study, you will see a series of math questions with proposed answers; in some cases, you will also see a justification. Your task is to decide whether the proposed answer is correct based only on the information shown on the screen.
+                    本研究旨在了解普通用户如何根据所提供的信息判断一道数学题的拟议答案是否正确。所提供的信息将包括：仅有 AI 对数学问题的回答，或 AI 的回答及其解释。在研究过程中，您将看到一系列数学问题及其拟议答案；在某些情况下，您还会看到相应的理由说明。
+                  </p>
+                  <p>
+                    您的任务是仅根据本研究中提供的信息，判断拟议答案是正确还是错误。
                   </p>
 
                   <div>
-                    <p className="font-semibold text-slate-900 mb-2">What you will do:</p>
+                    <p className="font-semibold text-slate-900 mb-2">您将需要做什么</p>
                     <ul className="list-disc list-inside space-y-1">
-                      <li>Read each math question and the provided content;</li>
-                      <li>Make a Correct / Incorrect judgment for each item;</li>
-                      <li>For some items, rate how helpful the provided justification was for your decision;</li>
-                      <li>The study is expected to take approximately 45–50 minutes.</li>
+                      <li>阅读每道数学题，以及在提供的情况下阅读其理由说明。</li>
+                      <li>对每道题判断所给答案是正确还是错误。</li>
+                      <li>对于部分题目，评价所提供的理由说明对您做出判断有多大帮助。</li>
                     </ul>
                   </div>
 
                   <div>
-                    <p className="font-semibold text-slate-900 mb-2">Risks or discomforts:</p>
+                    <p className="font-semibold text-slate-900 mb-2">所需时间</p>
                     <ul className="list-disc list-inside space-y-1">
-                      <li>This study involves minimal risk, similar to ordinary problem-solving or reading-based judgment tasks;</li>
-                      <li>You may experience mild fatigue, mental effort, or slight time pressure.</li>
+                      <li>本研究预计耗时约 45–50 分钟。</li>
                     </ul>
                   </div>
 
                   <div>
-                    <p className="font-semibold text-slate-900 mb-2">Voluntary participation:</p>
+                    <p className="font-semibold text-slate-900 mb-2">风险或不适</p>
                     <ul className="list-disc list-inside space-y-1">
-                      <li>Your participation is completely voluntary;</li>
-                      <li>You may stop participating at any time without penalty or negative consequences;</li>
-                      <li>If you choose to stop, you may simply close the page.</li>
+                      <li>我们预计本研究不会带来显著风险。</li>
+                      <li>本研究仅包含解题或基于阅读的判断任务。</li>
                     </ul>
                   </div>
 
                   <div>
-                    <p className="font-semibold text-slate-900 mb-2">Privacy and data use:</p>
+                    <p className="font-semibold text-slate-900 mb-2">自愿参与</p>
                     <ul className="list-disc list-inside space-y-1">
-                      <li>We will record your responses and response times;</li>
-                      <li>We will not use directly identifying personal information in any report or publication;</li>
-                      <li>Your data will be used only for research and analysis purposes.</li>
+                      <li>您的参与完全出于自愿。</li>
+                      <li>您可以在任何时候停止参与，且不会受到任何惩罚。</li>
+                      <li>如果您选择停止参与，只需关闭页面即可。</li>
                     </ul>
                   </div>
 
                   <div>
-                    <p className="font-semibold text-slate-900 mb-2">Participant requirements:</p>
+                    <p className="font-semibold text-slate-900 mb-2">隐私与数据使用</p>
                     <ul className="list-disc list-inside space-y-1">
-                      <li>Please do not use scratch paper, calculators, search engines, chatbots, or any other external tools;</li>
-                      <li>Please complete the task using your own judgment only;</li>
-                      <li>Do not switch tabs, take screenshots, or copy content — violations will automatically terminate the session.</li>
+                      <li>我们将记录您的作答结果以及作答时间。</li>
+                      <li>本研究不会收集任何可识别您个人身份的信息。</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <p className="font-semibold text-slate-900 mb-2">参与者要求</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>请勿使用草稿纸、计算器、搜索引擎、聊天机器人或任何其他外部工具。请仅依赖本研究中提供的内容。</li>
+                      <li>请仅依据您自己的判断完成任务。</li>
+                      <li>请勿切换标签页、截图或复制内容。任何违规行为都将导致会话自动终止。</li>
                     </ul>
                   </div>
                 </div>
@@ -164,7 +183,7 @@ export function ConsentPage({ participantId, onConsented }: ConsentPageProps) {
             </TabsContent>
           </Tabs>
 
-          {/* Agreement checkbox — visually prominent */}
+          {/* Agreement checkbox */}
           <div
             id="agree-box"
             className={`mt-6 flex items-start gap-3 p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer
