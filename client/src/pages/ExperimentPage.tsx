@@ -15,7 +15,7 @@ type Stage = "landing" | "loading" | "consent" | "participant-code" | "instructi
 export default function ExperimentPage() {
   const [stage, setStage] = useState<Stage>("landing");
   const [participantId, setParticipantId] = useState<string | null>(null);
-  const [condition, setCondition] = useState<"AO" | "AJ" | null>(null);
+  const [condition, setCondition] = useState<"AO" | "AJ" | "MIX" | null>(null);
   const [tokenError, setTokenError] = useState<string | null>(null);
 
   // Extract invite token from URL query string (?token=xxx)

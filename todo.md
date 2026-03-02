@@ -97,3 +97,8 @@
 - [x] 计时器显示改为正计时（显示已用时间），不显示倒计时
 - [x] 所有页面中英文顺序统一：英文在前（上），中文在后（下）
 - [x] 更新知情同意书页面中英文内容为最新版本
+- [x] 新增 MIX 实验组：schema 更新（MIX condition、assignedItems 改为对象数组）
+- [x] MIX 模板生成算法：8模板配额矩阵+受约束随机分配+AO/AJ掩码
+- [x] MIX session 创建逻辑：预先生成 16个固定 session，题目级 condition 传递
+- [x] 前端 QuestionPage 支持题目级 itemCondition
+- [x] 管理后台 MIX 组配额管理、手动触发生成、刷新配额功能

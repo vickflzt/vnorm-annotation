@@ -13,7 +13,7 @@ import { AlertTriangle, BookOpen, CheckCircle2, Clock, Info, Lock, XCircle } fro
 import { toast } from "sonner";
 
 interface PracticePageProps {
-  condition: "AO" | "AJ";
+  condition: "AO" | "AJ" | "MIX";
   onCompleted: () => void;
 }
 

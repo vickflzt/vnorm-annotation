@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2, ArrowRight } from "lucide-react";
 
 interface PracticeCompletePageProps {
-  condition: "AO" | "AJ";
+  condition: "AO" | "AJ" | "MIX";
   onStart: () => void;
 }
 
@@ -39,8 +39,8 @@ export function PracticeCompletePage({ condition, onStart }: PracticeCompletePag
             <li className="text-red-600 font-medium">• After clicking “Continue”, your Part 1 judgment is <strong>locked and cannot be changed</strong>.</li>
             <li className="text-red-600 font-medium">• After submitting Part 2, you move directly to the next question with <strong>no option to go back</strong>.</li>
             <li>• Part 1 has a 3-minute limit; Part 2 has a 1-minute limit. A warning appears when time is up, with a brief extension before auto-submit.</li>
-            {condition === "AJ" && (
-              <li>• <strong>Please read the LLM Response carefully</strong> — it is intended to inform your judgment.</li>
+            {(condition === "AJ" || condition === "MIX") && (
+              <li>• <strong>Please read the LLM Response carefully</strong> when shown — it is intended to inform your judgment.</li>
             )}
           </ul>
           <div className="border-t border-slate-200 pt-3 space-y-1 text-xs text-slate-500">
@@ -48,8 +48,8 @@ export function PracticeCompletePage({ condition, onStart }: PracticeCompletePag
             <li className="text-red-600 font-medium">• 点击“继续”后，第一部分的判断将立即锁定，<strong>无法修改</strong>。</li>
             <li className="text-red-600 font-medium">• 完成第二部分评分后，将直接翻到下一题，<strong>无法回看</strong>。</li>
             <li>• 第一部分限时 3 分钟，第二部分限时 1 分钟，超时后弹出提示并有短暂延长期。</li>
-            {condition === "AJ" && (
-              <li>• <strong>请认真阅读每题的 LLM Response（解答过程）</strong>，这是您做出判断的重要依据。</li>
+            {(condition === "AJ" || condition === "MIX") && (
+              <li>• <strong>如题目显示了 LLM Response（解答过程），请认真阅读</strong>，这是您做出判断的重要依据。</li>
             )}
           </div>
         </div>

@@ -24,11 +24,13 @@ interface Question {
   difficultyLevel: number | null | undefined;
   subject: string | null | undefined;
   figureUrl: string | null | undefined;
+  /** Per-item condition for MIX sessions; falls back to session condition for AO/AJ sessions */
+  itemCondition?: "AO" | "AJ" | null;
 }
 
 interface QuestionPageProps {
   participantId: string;
-  condition: "AO" | "AJ";
+  condition: "AO" | "AJ" | "MIX";
   questions: Question[];
   initialIndex: number;
   onCompleted: () => void;
@@ -243,6 +245,7 @@ export function QuestionPage({
         helpfulness: null,           // fail
         confidenceRating: null,      // fail
         confidenceRtSeconds: null,
+        ...(condition === "MIX" ? { itemCondition: currentQuestion.itemCondition ?? "AO" } : {}),
       });
 
       if (result.isCompleted) {
@@ -281,6 +284,7 @@ export function QuestionPage({
         helpfulness: null,           // fail
         confidenceRating: null,      // fail
         confidenceRtSeconds: PHASE2_HARD_LIMIT,
+        ...(condition === "MIX" ? { itemCondition: currentQuestion.itemCondition ?? "AO" } : {}),
       });
 
       if (result.isCompleted) {
@@ -365,7 +369,8 @@ export function QuestionPage({
       toast.error("请先做出正确/错误判断 / Please select Correct or Incorrect first");
       return;
     }
-    if (condition === "AJ" && helpfulness === null) {
+    const itemCond = condition === "MIX" ? (currentQuestion.itemCondition ?? "AO") : condition;
+    if (itemCond === "AJ" && helpfulness === null) {
       toast.error("请评价解释的帮助程度 / Please rate the helpfulness of the justification");
       return;
     }
@@ -388,9 +393,10 @@ export function QuestionPage({
         responseCorrect: judgment === "correct",
         rtSeconds: phase1RtRef.current,
         timedOut: false,
-        helpfulness: condition === "AJ" ? (helpfulness ?? null) : null,
+        helpfulness: (() => { const ic = condition === "MIX" ? (currentQuestion.itemCondition ?? "AO") : condition; return ic === "AJ" ? (helpfulness ?? null) : null; })(),
         confidenceRating: confidenceRating ?? null,
         confidenceRtSeconds: confRt,
+        ...(condition === "MIX" ? { itemCondition: currentQuestion.itemCondition ?? "AO" } : {}),
       });
 
       if (result.isCompleted) {
@@ -411,9 +417,10 @@ export function QuestionPage({
   if (!currentQuestion) return null;
 
   const isPhase2 = phase === "rating";
+  const effectiveItemCondition = condition === "MIX" ? (currentQuestion?.itemCondition ?? "AO") : condition;
   const canSubmitPhase2 =
     !!judgment &&
-    (condition !== "AJ" || helpfulness !== null) &&
+    (effectiveItemCondition !== "AJ" || helpfulness !== null) &&
     confidenceRating !== null &&
     !isSubmitting;
 
@@ -501,7 +508,7 @@ export function QuestionPage({
               />
             </div>
             <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-              {condition === "AO" ? "Answer Only" : "Answer + Justification"}
+              {condition === "AO" ? "Answer Only" : condition === "AJ" ? "Answer + Justification" : "Mixed (AO+AJ)"}
             </span>
           </div>
 
@@ -565,8 +572,8 @@ export function QuestionPage({
           )}
         </div>
 
-        {/* AJ: Full response / justification */}
-        {condition === "AJ" && currentQuestion.response && (
+        {/* AJ / MIX(AJ): Full response / justification */}
+        {((condition === "AJ") || (condition === "MIX" && currentQuestion.itemCondition === "AJ")) && currentQuestion.response && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="bg-blue-50 border-b border-blue-100 px-6 py-3">
               <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
@@ -690,7 +697,7 @@ export function QuestionPage({
             </div>
 
             {/* AJ only: Helpfulness rating */}
-            {condition === "AJ" && (
+            {effectiveItemCondition === "AJ" && (
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                 <p className="text-sm font-semibold text-slate-800 mb-1">
                   How helpful was the justification in making your decision?

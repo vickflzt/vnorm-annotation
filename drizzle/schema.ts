@@ -51,11 +51,13 @@ export const questionBank = mysqlTable("question_bank", {
 export type QuestionBankItem = typeof questionBank.$inferSelect;
 
 // ─── Participant Sessions ─────────────────────────────────────────────────────
+// assignedItems: for AO/AJ sessions, array of itemId strings (legacy).
+//                for MIX sessions, array of {itemId, condition} objects.
 export const participantSessions = mysqlTable("participant_sessions", {
   id: int("id").autoincrement().primaryKey(),
   participantId: varchar("participantId", { length: 64 }).notNull().unique(), // nanoid, anonymous
-  condition: mysqlEnum("condition", ["AO", "AJ"]).notNull(),
-  assignedItems: json("assignedItems").notNull(), // ordered array of itemIds (16 items)
+  condition: mysqlEnum("condition", ["AO", "AJ", "MIX"]).notNull(),
+  assignedItems: json("assignedItems").notNull(), // ordered array of itemIds or {itemId, condition} objects
   currentIndex: int("currentIndex").default(0).notNull(), // which question they're on
   status: mysqlEnum("status", ["consent", "instructions", "active", "completed", "terminated"]).default("consent").notNull(),
   violationCount: int("violationCount").default(0).notNull(),
@@ -65,6 +67,8 @@ export const participantSessions = mysqlTable("participant_sessions", {
   totalTimeSeconds: float("totalTimeSeconds"),
   passedAttentionCheck: boolean("passedAttentionCheck"),
   participantCode: varchar("participantCode", { length: 64 }), // manually assigned participant code
+  mixTemplateId: int("mixTemplateId"), // for MIX sessions: which template (1-8) this session uses
+  mixSlot: int("mixSlot"), // for MIX sessions: 0 = primary (uses template mask), 1 = mirror (inverted mask)
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -77,7 +81,7 @@ export const itemResponses = mysqlTable("item_responses", {
   participantId: varchar("participantId", { length: 64 }).notNull(),
   itemId: varchar("itemId", { length: 32 }).notNull(),
   category: mysqlEnum("category", ["TP", "TN", "FP", "FN", "GSM-CHECK"]).notNull(),
-  condition: mysqlEnum("condition", ["AO", "AJ"]).notNull(),
+  condition: mysqlEnum("condition", ["AO", "AJ"]).notNull(), // item-level condition (AO or AJ, never MIX)
   questionIndex: int("questionIndex").notNull(), // 0-based position in session
   responseCorrect: boolean("responseCorrect"), // true=Correct, false=Incorrect, null=timeout
   rtSeconds: float("rtSeconds"), // reaction time in seconds
@@ -116,7 +120,7 @@ export type ViolationEvent = typeof violationEvents.$inferSelect;
 // Stores per-condition quota and invite tokens
 export const experimentConfig = mysqlTable("experiment_config", {
   id: int("id").autoincrement().primaryKey(),
-  condition: mysqlEnum("condition", ["AO", "AJ"]).notNull().unique(),
+  condition: mysqlEnum("condition", ["AO", "AJ", "MIX"]).notNull().unique(),
   targetParticipants: int("targetParticipants").default(30).notNull(),
   inviteToken: varchar("inviteToken", { length: 64 }).notNull().unique(), // secret token for share link
   isOpen: boolean("isOpen").default(true).notNull(), // whether this condition is accepting new participants
@@ -125,3 +129,18 @@ export const experimentConfig = mysqlTable("experiment_config", {
 });
 
 export type ExperimentConfig = typeof experimentConfig.$inferSelect;
+
+// ─── MIX Session Templates ────────────────────────────────────────────────────
+// Stores the 8 pre-generated templates for the MIX condition.
+// Each template has 15 MATH500 items with per-item AO/AJ conditions.
+// Two sessions are derived from each template: primary (slot 0) and mirror (slot 1, inverted mask).
+export const mixSessionTemplates = mysqlTable("mix_session_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  templateId: int("templateId").notNull(), // 1-8
+  // JSON array of {itemId: string, condition: "AO"|"AJ"} for 15 MATH500 items
+  // The full session also includes GSM-CHECK at position 7 (AJ)
+  items: json("items").notNull(),
+  generatedAt: timestamp("generatedAt").defaultNow().notNull(),
+});
+
+export type MixSessionTemplate = typeof mixSessionTemplates.$inferSelect;

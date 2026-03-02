@@ -227,7 +227,8 @@ describe("dashboard (admin only)", () => {
     const csv = await caller.dashboard.exportCSV();
     expect(csv).toContain("participantId");
     expect(csv).toContain("participantCode");
-    expect(csv).toContain("condition");
+    expect(csv).toContain("sessionCondition");
+    expect(csv).toContain("itemCondition");
     expect(csv).toContain("itemId");
   });
 });

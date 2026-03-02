@@ -122,6 +122,7 @@ function OverviewTab() {
   const terminated = sessions?.filter((s) => s.status === "terminated").length ?? 0;
   const aoCount = sessions?.filter((s) => s.condition === "AO").length ?? 0;
   const ajCount = sessions?.filter((s) => s.condition === "AJ").length ?? 0;
+  const mixCount = sessions?.filter((s) => s.condition === "MIX").length ?? 0;
   const passedAttention = sessions?.filter((s) => s.passedAttentionCheck === true).length ?? 0;
   const failedAttention = sessions?.filter((s) => s.passedAttentionCheck === false).length ?? 0;
 
@@ -136,7 +137,7 @@ function OverviewTab() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {configs?.map((cfg) => {
-          const count = cfg.condition === "AO" ? aoCount : ajCount;
+          const count = cfg.condition === "AO" ? aoCount : cfg.condition === "AJ" ? ajCount : mixCount;
           const pct = cfg.targetParticipants > 0 ? Math.min(100, Math.round((count / cfg.targetParticipants) * 100)) : 0;
           return (
             <div key={cfg.condition} className="bg-white rounded-2xl border border-slate-200 p-5">
@@ -344,7 +345,29 @@ function ConfigTab() {
     onError: (e) => toast.error(`重置失败: ${e.message}`),
   });
 
-  const [editingQuota, setEditingQuota] = useState<{ AO?: number; AJ?: number }>({});
+  // MIX session management
+  const { data: mixStatus, refetch: refetchMix } = trpc.dashboard.getMixStatus.useQuery();
+  const generateMixMut = trpc.dashboard.generateMixSessions.useMutation({
+    onSuccess: (data) => {
+      toast.success(`已生成 ${data.count} 个 MIX session`);
+      refetchMix();
+      refetch();
+    },
+    onError: (e) => toast.error(`生成失败: ${e.message}`),
+  });
+  const resetMixMut = trpc.dashboard.resetMixQuota.useMutation({
+    onSuccess: () => {
+      toast.success("MIX 配额已重置");
+      refetchMix();
+      refetch();
+      utils.dashboard.getSessions.invalidate();
+      utils.dashboard.getItemCoverage.invalidate();
+    },
+    onError: (e) => toast.error(`重置失败: ${e.message}`),
+  });
+  const [showMixForceConfirm, setShowMixForceConfirm] = useState(false);
+
+  const [editingQuota, setEditingQuota] = useState<{ AO?: number; AJ?: number; MIX?: number }>({});
 
   if (isLoading) return <LoadingSpinner />;
 
@@ -398,7 +421,7 @@ function ConfigTab() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-base font-bold text-slate-800">
-                  {cfg.condition === "AO" ? "AO 组 — Answer Only" : "AJ 组 — Answer + Justification"}
+                  {cfg.condition === "AO" ? "AO 组 — Answer Only" : cfg.condition === "AJ" ? "AJ 组 — Answer + Justification" : "MIX 组 — Mixed AO+AJ"}
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">当前被试: {cfg.currentParticipants} / 目标: {cfg.targetParticipants}</p>
               </div>
@@ -448,6 +471,133 @@ function ConfigTab() {
       {(!configs || configs.length === 0) && (
         <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-400 text-sm">暂无配置数据，请先通过种子脚本初始化实验配置。</div>
       )}
+
+      {/* ── MIX Session Management ── */}
+      <div className="bg-white rounded-2xl border border-indigo-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-indigo-500 inline-block" />
+              MIX 组 Session 管理
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">预先生成 8 模板 × 2 = 16 个固定 session，每个被试看到 8 AO + 7 AJ 混合题目</p>
+          </div>
+          <button onClick={() => refetchMix()} className="text-xs text-indigo-600 flex items-center gap-1 hover:underline">
+            <RefreshCw className="w-3.5 h-3.5" /> 刷新
+          </button>
+        </div>
+
+        {/* Status grid */}
+        <div className="grid grid-cols-4 gap-3 mb-5">
+          {[
+            { label: "已生成", value: mixStatus?.total ?? 0, color: "text-slate-800" },
+            { label: "可用", value: mixStatus?.available ?? 0, color: "text-emerald-600" },
+            { label: "已完成", value: mixStatus?.completed ?? 0, color: "text-indigo-600" },
+            { label: "已终止", value: mixStatus?.terminated ?? 0, color: "text-red-500" },
+          ].map((s) => (
+            <div key={s.label} className="bg-slate-50 rounded-xl p-3 text-center">
+              <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{s.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Session table */}
+        {mixStatus && mixStatus.sessions.length > 0 && (
+          <div className="overflow-x-auto mb-5">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="text-left py-1.5 px-2 text-slate-500 font-medium">被试ID</th>
+                  <th className="text-left py-1.5 px-2 text-slate-500 font-medium">模板</th>
+                  <th className="text-left py-1.5 px-2 text-slate-500 font-medium">插槽</th>
+                  <th className="text-left py-1.5 px-2 text-slate-500 font-medium">被试编号</th>
+                  <th className="text-left py-1.5 px-2 text-slate-500 font-medium">状态</th>
+                </tr>
+              </thead>
+              <tbody>
+                {mixStatus.sessions.map((s) => (
+                  <tr key={s.participantId} className="border-b border-slate-100 hover:bg-slate-50">
+                    <td className="py-1.5 px-2 font-mono text-slate-600">{s.participantId.slice(0, 8)}…</td>
+                    <td className="py-1.5 px-2 text-slate-500">T{s.mixTemplateId}</td>
+                    <td className="py-1.5 px-2 text-slate-500">{s.mixSlot === 0 ? "主插槽" : "镜像插槽"}</td>
+                    <td className="py-1.5 px-2 text-slate-500">{s.participantCode ?? <span className="text-slate-300">未开始</span>}</td>
+                    <td className="py-1.5 px-2">
+                      <StatusBadge status={s.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Action buttons */}
+        <div className="flex flex-wrap gap-3">
+          {(mixStatus?.total ?? 0) === 0 ? (
+            <Button
+              size="sm"
+              onClick={() => generateMixMut.mutate({ force: false })}
+              disabled={generateMixMut.isPending}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+            >
+              {generateMixMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+              生成 16 个 MIX Session
+            </Button>
+          ) : (
+            <>
+              <AlertDialog open={showMixForceConfirm} onOpenChange={setShowMixForceConfirm}>
+                <AlertDialogTrigger asChild>
+                  <Button size="sm" variant="outline" className="border-amber-400 text-amber-600 hover:bg-amber-50">
+                    <RotateCcw className="w-3.5 h-3.5 mr-1" /> 重新生成（删除旧数据）
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>确认重新生成 MIX Session？</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      此操作将删除全部 {mixStatus?.total} 个 MIX session 及其答题记录，并重新生成 16 个新 session。
+                      <br /><br /><strong>此操作不可撤销，建议先导出数据备份。</strong>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>取消</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-amber-500 hover:bg-amber-600"
+                      onClick={() => { generateMixMut.mutate({ force: true }); setShowMixForceConfirm(false); }}
+                    >
+                      确认重新生成
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button size="sm" variant="outline" className="border-red-300 text-red-600 hover:bg-red-50">
+                    <Trash2 className="w-3.5 h-3.5 mr-1" /> 重置 MIX 配额
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>确认重置 MIX 配额？</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      将删除所有 MIX session、答题记录和模板，并将 MIX 条件下所有题目的 countAO/countAJ 减回对应数量。
+                      <br /><br /><strong>此操作不可撤销。</strong>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>取消</AlertDialogCancel>
+                    <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={() => resetMixMut.mutate()}>
+                      确认重置
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

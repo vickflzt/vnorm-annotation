@@ -6,6 +6,7 @@ import {
   InsertUser,
   experimentConfig,
   itemResponses,
+  mixSessionTemplates,
   participantSessions,
   questionBank,
   users,
@@ -119,12 +120,10 @@ export async function sampleQuestionsForSession(
     return Math.random() - 0.5;
   });
   // ── Deduplication: ensure no two items share the same question text ──
-  // (Some items in the bank are different V-Norm conditions of the same math
-  //  problem, e.g. TP05 and FP02 ask the same question with different answers.)
   const selected: typeof shuffled = [];
   const seenQuestions = new Set<string>();
   for (const item of shuffled) {
-    const qKey = (item.question ?? "").trim().slice(0, 200); // use first 200 chars as key
+    const qKey = (item.question ?? "").trim().slice(0, 200);
     if (!seenQuestions.has(qKey)) {
       seenQuestions.add(qKey);
       selected.push(item);
@@ -189,6 +188,28 @@ export async function createSession(
     currentIndex: 0,
     violationCount: 0,
     consentGiven: false,
+  });
+}
+
+/** Create a MIX session with per-item conditions */
+export async function createMixSession(
+  participantId: string,
+  assignedItems: Array<{ itemId: string; condition: "AO" | "AJ" }>,
+  mixTemplateId: number,
+  mixSlot: number
+) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.insert(participantSessions).values({
+    participantId,
+    condition: "MIX",
+    assignedItems: JSON.stringify(assignedItems),
+    status: "consent",
+    currentIndex: 0,
+    violationCount: 0,
+    consentGiven: false,
+    mixTemplateId,
+    mixSlot,
   });
 }
 
@@ -339,7 +360,7 @@ export async function getExperimentConfigByToken(token: string) {
 }
 
 export async function upsertExperimentConfig(
-  condition: "AO" | "AJ",
+  condition: "AO" | "AJ" | "MIX",
   data: { targetParticipants?: number; inviteToken?: string; isOpen?: boolean }
 ) {
   const db = await getDb();
@@ -366,12 +387,12 @@ export async function upsertExperimentConfig(
 
 export async function getParticipantCountByCondition() {
   const db = await getDb();
-  if (!db) return { AO: 0, AJ: 0 };
+  if (!db) return { AO: 0, AJ: 0, MIX: 0 };
   const rows = await db
     .select({ condition: participantSessions.condition, count: sql<number>`COUNT(*)` })
     .from(participantSessions)
     .groupBy(participantSessions.condition);
-  const result = { AO: 0, AJ: 0 };
+  const result: Record<string, number> = { AO: 0, AJ: 0, MIX: 0 };
   for (const row of rows) {
     result[row.condition] = Number(row.count);
   }
@@ -398,7 +419,7 @@ export async function getItemCoverageStats() {
 // ─── Quota Reset ──────────────────────────────────────────────────────────────
 
 /**
- * Reset ALL quota: wipe sessions, responses, violations, and reset countAO/countAJ to 0.
+ * Reset ALL quota: wipe sessions, responses, violations, mix templates, and reset countAO/countAJ to 0.
  * Keeps the question bank and experiment config intact.
  */
 export async function resetAllQuota() {
@@ -407,12 +428,13 @@ export async function resetAllQuota() {
   await db.delete(violationEvents);
   await db.delete(itemResponses);
   await db.delete(participantSessions);
+  await db.delete(mixSessionTemplates);
   await db.update(questionBank).set({ countAO: 0, countAJ: 0 });
 }
 
 /**
  * Release quota held by a single participant:
- * - Decrement countAO/countAJ for each item they were assigned
+ * - Decrement countAO/countAJ for each item they were assigned (using item-level condition for MIX)
  * - Delete their responses, violations, and session record
  */
 export async function releaseParticipantQuota(participantId: string) {
@@ -427,18 +449,26 @@ export async function releaseParticipantQuota(participantId: string) {
 
   if (sessions.length === 0) throw new Error("Session not found");
   const session = sessions[0];
-  const condition = session.condition;
+  const sessionCondition = session.condition;
 
-  let assignedItemIds: string[] = [];
+  // Parse assignedItems — may be string[] (AO/AJ) or {itemId,condition}[] (MIX)
+  type MixItem = { itemId: string; condition: "AO" | "AJ" };
+  let assignedItemIds: Array<string | MixItem> = [];
   try {
     const raw = session.assignedItems;
-    assignedItemIds = Array.isArray(raw) ? (raw as string[]) : JSON.parse(String(raw ?? "[]"));
+    assignedItemIds = Array.isArray(raw) ? (raw as Array<string | MixItem>) : JSON.parse(String(raw ?? "[]"));
   } catch {
     assignedItemIds = [];
   }
 
-  for (const itemId of assignedItemIds) {
-    if (condition === "AO") {
+  for (const item of assignedItemIds) {
+    const itemId = typeof item === "string" ? item : item.itemId;
+    const itemCondition: "AO" | "AJ" =
+      sessionCondition === "MIX"
+        ? (typeof item === "object" ? item.condition : "AO")
+        : (sessionCondition as "AO" | "AJ");
+
+    if (itemCondition === "AO") {
       await db
         .update(questionBank)
         .set({ countAO: sql`GREATEST(0, ${questionBank.countAO} - 1)` })
@@ -454,4 +484,270 @@ export async function releaseParticipantQuota(participantId: string) {
   await db.delete(violationEvents).where(eq(violationEvents.participantId, participantId));
   await db.delete(itemResponses).where(eq(itemResponses.participantId, participantId));
   await db.delete(participantSessions).where(eq(participantSessions.participantId, participantId));
+}
+
+// ─── MIX Session Templates ────────────────────────────────────────────────────
+
+export type MixAssignedItem = { itemId: string; condition: "AO" | "AJ" };
+
+/**
+ * The fixed quota matrix for 8 templates × 4 cells (TP/TN/FP/FN).
+ * Each row sums to 15; each column sums to 30 (= 10 items × 3 annotations).
+ */
+const QUOTA_MATRIX: Record<string, number[]> = {
+  // templateIndex 0..7 → [TP, TN, FP, FN]
+  T1: [3, 4, 4, 4],
+  T2: [3, 4, 4, 4],
+  T3: [4, 3, 4, 4],
+  T4: [4, 3, 4, 4],
+  T5: [4, 4, 4, 3],
+  T6: [4, 4, 4, 3],
+  T7: [4, 4, 3, 4],
+  T8: [4, 4, 3, 4],
+};
+const TEMPLATE_KEYS = ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8"] as const;
+const CELLS = ["TP", "TN", "FP", "FN"] as const;
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/**
+ * Constrained random assignment for one cell.
+ * Assigns `items` (10 items) to 8 templates, each item appearing in exactly 3 templates,
+ * respecting per-template quotas.
+ * Returns a map: templateKey → itemId[]
+ * Retries up to 100 times if a dead-end is reached.
+ */
+function assignCellToTemplates(
+  items: string[],
+  quotas: number[] // length 8, one per template
+): Map<string, string[]> | null {
+  const MAX_RETRIES = 100;
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    const shuffledItems = shuffle(items);
+    const remaining = [...quotas]; // remaining quota per template
+    const assignment = new Map<string, string[]>(TEMPLATE_KEYS.map((k) => [k, []]));
+    let failed = false;
+
+    for (const itemId of shuffledItems) {
+      // Find templates with remaining quota > 0
+      const eligible = TEMPLATE_KEYS.filter((_, i) => remaining[i] > 0);
+      if (eligible.length < 3) { failed = true; break; }
+
+      // Sort eligible by remaining quota descending (greedy), then shuffle ties
+      const sorted = shuffle(eligible).sort((a, b) => {
+        const ia = TEMPLATE_KEYS.indexOf(a);
+        const ib = TEMPLATE_KEYS.indexOf(b);
+        return remaining[ib] - remaining[ia];
+      });
+
+      const chosen = sorted.slice(0, 3);
+      for (const tk of chosen) {
+        assignment.get(tk)!.push(itemId);
+        remaining[TEMPLATE_KEYS.indexOf(tk)]--;
+      }
+    }
+
+    if (!failed) return assignment;
+  }
+  return null; // should not happen with these small numbers
+}
+
+/**
+ * Generate 8 MIX templates and 16 sessions, then persist them to the database.
+ * Each template has 15 MATH500 items (with per-item AO/AJ condition).
+ * GSM-CHECK is inserted at position 7 (0-indexed) as AJ for all sessions.
+ *
+ * Returns the 16 participantIds created.
+ */
+export async function generateMixSessions(
+  participantIdGenerator: () => string
+): Promise<string[]> {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+
+  // 1. Fetch all MATH500 items grouped by cell
+  const allItems = await db
+    .select({ itemId: questionBank.itemId, category: questionBank.category, question: questionBank.question })
+    .from(questionBank)
+    .where(sql`${questionBank.category} != 'GSM-CHECK'`);
+
+  const cellItems: Record<string, string[]> = { TP: [], TN: [], FP: [], FN: [] };
+  for (const item of allItems) {
+    if (item.category in cellItems) {
+      cellItems[item.category].push(item.itemId);
+    }
+  }
+
+  // Validate we have exactly 10 items per cell
+  for (const cell of CELLS) {
+    if (cellItems[cell].length !== 10) {
+      throw new Error(`Expected 10 ${cell} items, found ${cellItems[cell].length}`);
+    }
+  }
+
+  // 2. For each cell, assign items to templates using constrained random algorithm
+  const templateItems: Map<string, string[]> = new Map(TEMPLATE_KEYS.map((k) => [k, []]));
+
+  for (let ci = 0; ci < CELLS.length; ci++) {
+    const cell = CELLS[ci];
+    const quotas = TEMPLATE_KEYS.map((tk) => QUOTA_MATRIX[tk][ci]);
+    const assignment = assignCellToTemplates(cellItems[cell], quotas);
+    if (!assignment) throw new Error(`Failed to assign ${cell} items to templates after retries`);
+    for (const [tk, ids] of Array.from(assignment.entries())) {
+      templateItems.get(tk)!.push(...ids);
+    }
+  }
+
+  // 3. For each template, shuffle items and generate AO/AJ mask (8 AO, 7 AJ)
+  // Then create 2 sessions: primary (slot 0, uses mask) and mirror (slot 1, inverted mask)
+  const GSM_CHECK_ID = "GSM-CHECK";
+  const createdParticipantIds: string[] = [];
+
+  for (let ti = 0; ti < TEMPLATE_KEYS.length; ti++) {
+    const tk = TEMPLATE_KEYS[ti];
+    const templateId = ti + 1; // 1-based
+
+    const shuffledItems = shuffle(templateItems.get(tk)!);
+    if (shuffledItems.length !== 15) {
+      throw new Error(`Template ${tk} has ${shuffledItems.length} items, expected 15`);
+    }
+
+    // Generate AO/AJ mask: 8 AO + 7 AJ, randomly distributed
+    const maskArray: Array<"AO" | "AJ"> = [...Array(8).fill("AO"), ...Array(7).fill("AJ")];
+    const shuffledMask = shuffle(maskArray) as Array<"AO" | "AJ">;
+
+    // Primary items (slot 0): use mask as-is
+    const primaryItems: MixAssignedItem[] = shuffledItems.map((itemId, idx) => ({
+      itemId,
+      condition: shuffledMask[idx],
+    }));
+
+    // Mirror items (slot 1): invert mask
+    const mirrorItems: MixAssignedItem[] = shuffledItems.map((itemId, idx) => ({
+      itemId,
+      condition: shuffledMask[idx] === "AO" ? "AJ" : "AO",
+    }));
+
+    // Insert GSM-CHECK (AJ) at position 7 (0-indexed) for both
+    const insertGsm = (items: MixAssignedItem[]): MixAssignedItem[] => {
+      const before = items.slice(0, 7);
+      const after = items.slice(7);
+      return [...before, { itemId: GSM_CHECK_ID, condition: "AJ" }, ...after];
+    };
+
+    const primaryFull = insertGsm(primaryItems);
+    const mirrorFull = insertGsm(mirrorItems);
+
+    // Persist template record (stores primary items without GSM for reference)
+    await db.insert(mixSessionTemplates).values({
+      templateId,
+      items: JSON.stringify(primaryItems),
+    });
+
+    // Create primary session (slot 0)
+    const primaryId = participantIdGenerator();
+    await db.insert(participantSessions).values({
+      participantId: primaryId,
+      condition: "MIX",
+      assignedItems: JSON.stringify(primaryFull),
+      status: "consent",
+      currentIndex: 0,
+      violationCount: 0,
+      consentGiven: false,
+      mixTemplateId: templateId,
+      mixSlot: 0,
+    });
+    createdParticipantIds.push(primaryId);
+
+    // Create mirror session (slot 1)
+    const mirrorId = participantIdGenerator();
+    await db.insert(participantSessions).values({
+      participantId: mirrorId,
+      condition: "MIX",
+      assignedItems: JSON.stringify(mirrorFull),
+      status: "consent",
+      currentIndex: 0,
+      violationCount: 0,
+      consentGiven: false,
+      mixTemplateId: templateId,
+      mixSlot: 1,
+    });
+    createdParticipantIds.push(mirrorId);
+  }
+
+  return createdParticipantIds;
+}
+
+/** Check if MIX sessions have already been generated */
+export async function getMixSessionCount(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const rows = await db
+    .select({ count: sql<number>`COUNT(*)` })
+    .from(participantSessions)
+    .where(eq(participantSessions.condition, "MIX"));
+  return Number(rows[0]?.count ?? 0);
+}
+
+/** Get all MIX sessions with their slot info */
+export async function getMixSessions() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(participantSessions)
+    .where(eq(participantSessions.condition, "MIX"))
+    .orderBy(asc(participantSessions.mixTemplateId), asc(participantSessions.mixSlot));
+}
+
+/** Reset only MIX sessions: delete MIX sessions, responses, templates; reset countAO/countAJ for MIX items */
+export async function resetMixQuota() {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+
+  // Get all MIX session participant IDs
+  const mixSessions = await getMixSessions();
+  const mixParticipantIds = mixSessions.map((s) => s.participantId);
+
+  if (mixParticipantIds.length > 0) {
+    // For each MIX session, decrement item counts
+    for (const session of mixSessions) {
+      type MixItem = { itemId: string; condition: "AO" | "AJ" };
+      let items: MixItem[] = [];
+      try {
+        const raw = session.assignedItems;
+        items = Array.isArray(raw) ? (raw as MixItem[]) : JSON.parse(String(raw ?? "[]"));
+      } catch { items = []; }
+
+      for (const item of items) {
+        if (item.itemId === "GSM-CHECK") continue;
+        if (item.condition === "AO") {
+          await db.update(questionBank)
+            .set({ countAO: sql`GREATEST(0, ${questionBank.countAO} - 1)` })
+            .where(eq(questionBank.itemId, item.itemId));
+        } else {
+          await db.update(questionBank)
+            .set({ countAJ: sql`GREATEST(0, ${questionBank.countAJ} - 1)` })
+            .where(eq(questionBank.itemId, item.itemId));
+        }
+      }
+
+      // Delete responses and violations for this participant
+      await db.delete(itemResponses).where(eq(itemResponses.participantId, session.participantId));
+      await db.delete(violationEvents).where(eq(violationEvents.participantId, session.participantId));
+    }
+
+    // Delete all MIX sessions
+    await db.delete(participantSessions).where(eq(participantSessions.condition, "MIX"));
+  }
+
+  // Delete all templates
+  await db.delete(mixSessionTemplates);
 }

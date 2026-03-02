@@ -4,7 +4,7 @@ import { Clock, Eye, EyeOff, ShieldAlert } from "lucide-react";
 
 interface InstructionsPageProps {
   participantId: string;
-  condition: "AO" | "AJ";
+  condition: "AO" | "AJ" | "MIX";
   onStart: () => void;
 }
 
@@ -38,9 +38,13 @@ export function InstructionsPage({ participantId, condition, onStart }: Instruct
               <p className="text-slate-700 text-sm leading-relaxed">
                 You will verify whether proposed answers to math problems are correct. You will review <strong>16 math questions</strong> with 3 minutes per question. Each question has the AI's proposed answer. Your task is to determine whether each proposed answer is <strong>correct or incorrect</strong>.
               </p>
-            ) : (
+            ) : condition === "AJ" ? (
               <p className="text-slate-700 text-sm leading-relaxed">
                 You will verify whether proposed answers to math problems are correct. You will review <strong>16 math questions</strong> with 3 minutes per question. Each question has the AI's proposed answer. Your task is to determine whether each proposed answer is correct or incorrect.
+              </p>
+            ) : (
+              <p className="text-slate-700 text-sm leading-relaxed">
+                You will verify whether proposed answers to math problems are correct. You will review <strong>16 math questions</strong> with 3 minutes per question. Some questions include the AI's justification; others show only the answer. Your task is to determine whether each proposed answer is <strong>correct or incorrect</strong>.
               </p>
             )}
           </div>
@@ -52,9 +56,13 @@ export function InstructionsPage({ participantId, condition, onStart }: Instruct
               <p className="text-slate-700 text-sm leading-relaxed">
                 您需要核实所给出的数学问题答案是否正确。您将审阅 <strong>16 个数学问题</strong>，每个问题都有一个给出的答案。您的任务是判断每个给出的答案是<strong>正确还是错误</strong>。
               </p>
-            ) : (
+            ) : condition === "AJ" ? (
               <p className="text-slate-700 text-sm leading-relaxed">
                 您需要核实所给出的数学问题的答案是否正确。您将审阅 <strong>16 个数学问题</strong>，每个问题都有一个给出的答案和相应的解释说明。您的任务是判断每个给出的答案是否正确或错误。请<strong>根据所提供的解释</strong>来做出您的判断。
+              </p>
+            ) : (
+              <p className="text-slate-700 text-sm leading-relaxed">
+                您需要核实所给出的数学问题答案是否正确。您将审阅 <strong>16 个数学问题</strong>，部分题目包含 AI 的解释说明，部分仅显示答案。您的任务是判断每个给出的答案是<strong>正确还是错误</strong>。
               </p>
             )}
           </div>
@@ -77,9 +85,9 @@ export function InstructionsPage({ participantId, condition, onStart }: Instruct
               <div>
                 <p className="text-xs font-semibold text-blue-800">Content Shown</p>
                 <p className="text-xs text-blue-700 mt-0.5">
-                  {condition === "AO" ? "Question + Answer" : "Question + Answer + Justification"}
+                  {condition === "AO" ? "Question + Answer" : condition === "AJ" ? "Question + Answer + Justification" : "Mixed (Answer / Answer + Justification)"}
                   <br />
-                  {condition === "AO" ? "题目 + 答案" : "题目 + 答案 + 解释"}
+                  {condition === "AO" ? "题目 + 答案" : condition === "AJ" ? "题目 + 答案 + 解释" : "混合（部分含解释）"}
                 </p>
               </div>
             </div>

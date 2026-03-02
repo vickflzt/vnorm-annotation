@@ -7,28 +7,33 @@ import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import {
   createSession,
+  generateMixSessions,
   getAllResponses,
   getAllSessions,
   getAllViolations,
   getExperimentConfig,
   getExperimentConfigByToken,
   getItemCoverageStats,
+  getMixSessionCount,
+  getMixSessions,
   getParticipantCountByCondition,
   getQuestionsByItemIds,
   getResponsesByParticipant,
   getSession,
   getViolationsByParticipant,
   incrementQuestionCount,
+  resetAllQuota,
+  resetMixQuota,
+  releaseParticipantQuota,
   saveItemResponse,
   saveParticipantCode,
   saveViolation,
   sampleQuestionsForSession,
   updateSessionStatus,
   upsertExperimentConfig,
-  resetAllQuota,
-  releaseParticipantQuota,
 } from "./db";
 import { ENV } from "./_core/env";
+
 // ─── Admin guard ──────────────────────────────────────────────────────────────
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") {
@@ -41,7 +46,6 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
 const experimentRouter = router({
   /**
    * Validate an invite token and return the associated condition.
-   * Used when a participant arrives via a share link.
    */
   validateToken: publicProcedure
     .input(z.object({ token: z.string() }))
@@ -54,16 +58,17 @@ const experimentRouter = router({
 
   /**
    * Create a new anonymous participant session.
-   * Randomly assigns AO or AJ condition, samples 15 MATH500 + 1 GSM-CHECK.
+   * For AO/AJ: randomly samples 15 MATH500 + 1 GSM-CHECK.
+   * For MIX: claims a pre-generated MIX session slot (participantId is already set).
    * If inviteToken is provided, assigns the token's condition.
    */
   createSession: publicProcedure
     .input(z.object({
-      preferredCondition: z.enum(["AO", "AJ"]).optional(),
+      preferredCondition: z.enum(["AO", "AJ", "MIX"]).optional(),
       inviteToken: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
-      let condition: "AO" | "AJ";
+      let condition: "AO" | "AJ" | "MIX";
       if (input.inviteToken) {
         const config = await getExperimentConfigByToken(input.inviteToken);
         if (!config) throw new TRPCError({ code: "NOT_FOUND", message: "Invalid invite token" });
@@ -73,8 +78,24 @@ const experimentRouter = router({
         condition = input.preferredCondition ?? (Math.random() < 0.5 ? "AO" : "AJ");
       }
 
+      if (condition === "MIX") {
+        // For MIX, find an unclaimed pre-generated session (status = "consent", no participantCode yet)
+        // The pre-generated sessions already have participantIds; we just return one.
+        const mixSessions = await getMixSessions();
+        // Find a session that hasn't been started (no startedAt, status = consent)
+        const available = mixSessions.find((s) => s.status === "consent" && !s.startedAt);
+        if (!available) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "No available MIX session slots. Please ask the administrator to regenerate MIX sessions." });
+        }
+        return {
+          participantId: available.participantId,
+          condition: "MIX" as const,
+          totalItems: 16,
+        };
+      }
+
+      // AO or AJ
       const mathItems = await sampleQuestionsForSession(condition);
-      // Insert GSM-CHECK at position 7 (0-indexed), i.e. 8th question
       const gsmCheckId = "GSM-CHECK";
       const before = mathItems.slice(0, 7);
       const after = mathItems.slice(7);
@@ -88,6 +109,7 @@ const experimentRouter = router({
 
   /**
    * Get session state and assigned questions for a participant.
+   * For MIX sessions, each question also carries its item-level condition.
    */
   getSession: publicProcedure
     .input(z.object({ participantId: z.string() }))
@@ -95,22 +117,39 @@ const experimentRouter = router({
       const session = await getSession(input.participantId);
       if (!session) throw new TRPCError({ code: "NOT_FOUND", message: "Session not found" });
 
-      const assignedItems = JSON.parse(session.assignedItems as string) as string[];
-      const questions = await getQuestionsByItemIds(assignedItems);
+      type MixItem = { itemId: string; condition: "AO" | "AJ" };
+      type AssignedEntry = string | MixItem;
 
-      // Return questions in assigned order, stripping gold answer for participant view
-      const orderedQuestions = assignedItems.map((itemId) => {
+      let rawItems: AssignedEntry[] = [];
+      try {
+        const raw = session.assignedItems;
+        rawItems = Array.isArray(raw) ? (raw as AssignedEntry[]) : JSON.parse(String(raw));
+      } catch {
+        rawItems = [];
+      }
+
+      const itemIds = rawItems.map((x) => (typeof x === "string" ? x : x.itemId));
+      const questions = await getQuestionsByItemIds(itemIds);
+
+      const orderedQuestions = rawItems.map((entry) => {
+        const itemId = typeof entry === "string" ? entry : entry.itemId;
+        const itemCondition: "AO" | "AJ" | null =
+          session.condition === "MIX"
+            ? (typeof entry === "object" ? entry.condition : "AO")
+            : null; // null means use session-level condition
+
         const q = questions.find((x) => x.itemId === itemId);
         if (!q) return null;
         return {
           itemId: q.itemId,
           category: q.category,
           question: q.question,
-          response: q.response, // full response (AJ uses this)
+          response: q.response,
           extractedResponseAnswer: q.extractedResponseAnswer,
           difficultyLevel: q.difficultyLevel,
           subject: q.subject,
           figureUrl: q.figureUrl ?? null,
+          itemCondition, // null for AO/AJ sessions (use session.condition), "AO"|"AJ" for MIX
         };
       }).filter(Boolean);
 
@@ -122,7 +161,7 @@ const experimentRouter = router({
         violationCount: session.violationCount,
         consentGiven: session.consentGiven,
         participantCode: session.participantCode ?? null,
-        totalItems: assignedItems.length,
+        totalItems: itemIds.length,
         questions: orderedQuestions,
         startedAt: session.startedAt,
         completedAt: session.completedAt,
@@ -130,8 +169,7 @@ const experimentRouter = router({
     }),
 
   /**
-   * Save the manually-assigned participant code entered by the participant.
-   * Called after consent is given, before instructions.
+   * Save the manually-assigned participant code.
    */
   submitParticipantCode: publicProcedure
     .input(z.object({
@@ -177,6 +215,7 @@ const experimentRouter = router({
 
   /**
    * Submit a single item response.
+   * For MIX sessions, the item-level condition is passed from the frontend.
    */
   submitResponse: publicProcedure
     .input(
@@ -191,6 +230,8 @@ const experimentRouter = router({
         helpfulness: z.number().int().min(1).max(5).nullable().optional(),
         confidenceRating: z.number().int().min(1).max(5).nullable().optional(),
         confidenceRtSeconds: z.number().min(0).nullable().optional(),
+        // For MIX sessions: the item-level condition resolved by the frontend
+        itemCondition: z.enum(["AO", "AJ"]).optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -200,11 +241,22 @@ const experimentRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "Session terminated" });
       }
 
+      // Resolve the effective condition for this item
+      let effectiveCondition: "AO" | "AJ";
+      if (session.condition === "MIX") {
+        if (!input.itemCondition) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "itemCondition required for MIX sessions" });
+        }
+        effectiveCondition = input.itemCondition;
+      } else {
+        effectiveCondition = session.condition as "AO" | "AJ";
+      }
+
       await saveItemResponse({
         participantId: input.participantId,
         itemId: input.itemId,
         category: input.category,
-        condition: session.condition,
+        condition: effectiveCondition,
         questionIndex: input.questionIndex,
         responseCorrect: input.responseCorrect,
         rtSeconds: input.rtSeconds,
@@ -216,15 +268,23 @@ const experimentRouter = router({
 
       // Increment quota counter for non-GSM items
       if (input.category !== "GSM-CHECK") {
-        await incrementQuestionCount(input.itemId, session.condition);
+        await incrementQuestionCount(input.itemId, effectiveCondition);
       }
 
       // Advance currentIndex
       const nextIndex = input.questionIndex + 1;
-      const assignedItems = JSON.parse(session.assignedItems as string) as string[];
+
+      type MixItem = { itemId: string; condition: "AO" | "AJ" };
+      type AssignedEntry = string | MixItem;
+      let assignedItems: AssignedEntry[] = [];
+      try {
+        const raw = session.assignedItems;
+        assignedItems = Array.isArray(raw) ? (raw as AssignedEntry[]) : JSON.parse(String(raw ?? "[]"));
+      } catch { assignedItems = []; }
+
       const isLast = nextIndex >= assignedItems.length;
 
-      // Check attention check (GSM-CHECK answer should be "48", correct = true)
+      // Check attention check
       let passedAttentionCheck = session.passedAttentionCheck;
       if (input.category === "GSM-CHECK") {
         passedAttentionCheck = input.responseCorrect === true;
@@ -277,11 +337,8 @@ const experimentRouter = router({
         return { terminated: session.status === "terminated" };
       }
 
-      // Terminate after 3 serious violations (tab switch, visibility hidden, screenshot)
-      // First 2 serious violations: warn. 3rd: terminate.
       const seriousViolations = ["tab_switch", "visibility_hidden", "screenshot_attempt"];
       const isSerious = seriousViolations.includes(input.violationType);
-      // Count only serious violations
       const previousSeriousCount = session.violationCount ?? 0;
       const newSeriousCount = isSerious ? previousSeriousCount + 1 : previousSeriousCount;
       const newCount = (session.violationCount ?? 0) + 1;
@@ -310,7 +367,6 @@ const experimentRouter = router({
         violationCount: newCount,
         seriousCount: newSeriousCount,
         isSerious,
-        // warningNumber: 1 or 2 means warn, 3 means terminate
         warningNumber: isSerious && !shouldTerminate ? newSeriousCount : null,
       };
     }),
@@ -368,7 +424,7 @@ const dashboardRouter = router({
   updateConditionConfig: adminProcedure
     .input(
       z.object({
-        condition: z.enum(["AO", "AJ"]),
+        condition: z.enum(["AO", "AJ", "MIX"]),
         targetParticipants: z.number().int().min(1).max(500).optional(),
         isOpen: z.boolean().optional(),
       })
@@ -382,7 +438,7 @@ const dashboardRouter = router({
     }),
 
   regenerateToken: adminProcedure
-    .input(z.object({ condition: z.enum(["AO", "AJ"]) }))
+    .input(z.object({ condition: z.enum(["AO", "AJ", "MIX"]) }))
     .mutation(async ({ input }) => {
       const newToken = nanoid(24);
       await upsertExperimentConfig(input.condition, { inviteToken: newToken });
@@ -398,7 +454,8 @@ const dashboardRouter = router({
     const header = [
       "participantId",
       "participantCode",
-      "condition",
+      "sessionCondition",
+      "itemCondition",
       "itemId",
       "category",
       "questionIndex",
@@ -412,6 +469,8 @@ const dashboardRouter = router({
       "sessionStatus",
       "violationCount",
       "passedAttentionCheck",
+      "mixTemplateId",
+      "mixSlot",
     ].join(",");
 
     const rows = responses.map((r) => {
@@ -419,7 +478,8 @@ const dashboardRouter = router({
       return [
         r.participantId,
         s?.participantCode ?? "",
-        r.condition,
+        s?.condition ?? "",
+        r.condition, // item-level condition (AO or AJ)
         r.itemId,
         r.category,
         r.questionIndex,
@@ -433,6 +493,8 @@ const dashboardRouter = router({
         s?.status ?? "",
         s?.violationCount ?? "",
         s?.passedAttentionCheck === null ? "" : s?.passedAttentionCheck ? "1" : "0",
+        s?.mixTemplateId ?? "",
+        s?.mixSlot ?? "",
       ]
         .map((v) => `"${String(v).replace(/"/g, '""')}"`)
         .join(",");
@@ -441,7 +503,7 @@ const dashboardRouter = router({
     return [header, ...rows].join("\n");
   }),
 
-  /** Reset ALL quota: wipe all sessions/responses/violations, reset countAO/countAJ to 0. */
+  /** Reset ALL quota: wipe all sessions/responses/violations/mix templates, reset countAO/countAJ to 0. */
   resetAllQuota: adminProcedure.mutation(async () => {
     await resetAllQuota();
     return { success: true };
@@ -454,6 +516,61 @@ const dashboardRouter = router({
       await releaseParticipantQuota(input.participantId);
       return { success: true };
     }),
+
+  // ── MIX Session Management ────────────────────────────────────────────────
+
+  /** Get MIX session status: how many generated, how many used */
+  getMixStatus: adminProcedure.query(async () => {
+    const sessions = await getMixSessions();
+    const total = sessions.length;
+    const used = sessions.filter((s) => s.status !== "consent" || s.startedAt !== null).length;
+    const available = sessions.filter((s) => s.status === "consent" && s.startedAt === null).length;
+    const completed = sessions.filter((s) => s.status === "completed").length;
+    const active = sessions.filter((s) => s.status === "active").length;
+    const terminated = sessions.filter((s) => s.status === "terminated").length;
+
+    return {
+      total,
+      used,
+      available,
+      completed,
+      active,
+      terminated,
+      sessions: sessions.map((s) => ({
+        participantId: s.participantId,
+        mixTemplateId: s.mixTemplateId,
+        mixSlot: s.mixSlot,
+        status: s.status,
+        participantCode: s.participantCode,
+        startedAt: s.startedAt,
+        completedAt: s.completedAt,
+      })),
+    };
+  }),
+
+  /** Generate 8 templates × 2 slots = 16 MIX sessions. Fails if sessions already exist. */
+  generateMixSessions: adminProcedure
+    .input(z.object({ force: z.boolean().default(false) }))
+    .mutation(async ({ input }) => {
+      const existingCount = await getMixSessionCount();
+      if (existingCount > 0 && !input.force) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: `${existingCount} MIX sessions already exist. Use force=true to regenerate (this will delete existing MIX data).`,
+        });
+      }
+      if (existingCount > 0 && input.force) {
+        await resetMixQuota();
+      }
+      const ids = await generateMixSessions(() => nanoid(12));
+      return { success: true, count: ids.length, participantIds: ids };
+    }),
+
+  /** Reset only MIX sessions (delete MIX sessions, responses, templates; decrement counts). */
+  resetMixQuota: adminProcedure.mutation(async () => {
+    await resetMixQuota();
+    return { success: true };
+  }),
 });
 
 // ─── App router ───────────────────────────────────────────────────────────────
