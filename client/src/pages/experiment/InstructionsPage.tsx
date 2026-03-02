@@ -36,11 +36,11 @@ export function InstructionsPage({ participantId, condition, onStart }: Instruct
             <h2 className="font-semibold text-slate-900 text-base">Your Task</h2>
             {condition === "AO" ? (
               <p className="text-slate-700 text-sm leading-relaxed">
-                You will verify whether proposed answers to math problems are correct. You will review <strong>16 math questions</strong>, each with a proposed answer. Your task is to judge whether each proposed answer is <strong>correct or incorrect</strong>.
+                You will verify whether proposed answers to math problems are correct. You will review <strong>16 math questions</strong> with 3 minutes per question. Each question has the AI's proposed answer. Your task is to determine whether each proposed answer is <strong>correct or incorrect</strong>.
               </p>
             ) : (
               <p className="text-slate-700 text-sm leading-relaxed">
-                You will verify whether proposed answers to math problems are correct. You will review <strong>16 math questions</strong>, each with a proposed answer and a justification. Your task is to judge whether each proposed answer is correct or incorrect. Please <strong>use the provided justification</strong> to inform your decision.
+                You will verify whether proposed answers to math problems are correct. You will review <strong>16 math questions</strong> with 3 minutes per question. Each question has the AI's proposed answer. Your task is to determine whether each proposed answer is correct or incorrect.
               </p>
             )}
           </div>
