@@ -482,6 +482,18 @@ export function PracticePage({ condition, onCompleted }: PracticePageProps) {
               </div>
             </label>
           </RadioGroup>
+
+          {/* Warning shown after user selects an option */}
+          {judgment && !isPhase2 && (
+            <div className="mt-3 flex items-start gap-2 bg-red-50 border border-red-300 rounded-lg px-4 py-2.5">
+              <span className="text-red-500 text-sm mt-0.5 shrink-0">⚠</span>
+              <p className="text-sm text-red-700 font-medium leading-snug">
+                Once you click Continue, this answer cannot be changed.
+                <br />
+                <span className="font-normal text-red-600">一旦点击继续按钮，该答案将无法更改。</span>
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Phase 1 Continue button */}
