@@ -135,16 +135,17 @@ function OverviewTab() {
         <StatCard label="已终止" value={terminated} icon={<XCircle className="w-5 h-5 text-red-500" />} />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {configs?.map((cfg) => {
           const count = cfg.condition === "AO" ? aoCount : cfg.condition === "AJ" ? ajCount : mixCount;
           const pct = cfg.targetParticipants > 0 ? Math.min(100, Math.round((count / cfg.targetParticipants) * 100)) : 0;
+          const conditionColor = cfg.condition === "AO" ? "border-blue-200" : cfg.condition === "AJ" ? "border-violet-200" : "border-indigo-200";
           return (
-            <div key={cfg.condition} className="bg-white rounded-2xl border border-slate-200 p-5">
+            <div key={cfg.condition} className={`bg-white rounded-2xl border p-5 ${conditionColor}`}>
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <span className="text-sm font-bold text-slate-800">
-                    {cfg.condition === "AO" ? "AO 组（仅答案）" : "AJ 组（答案+推理）"}
+                    {cfg.condition === "AO" ? "AO 组（仅答案）" : cfg.condition === "AJ" ? "AJ 组（答案+推理）" : "MIX 组（混合 AO+AJ）"}
                   </span>
                   <Badge variant="outline" className={`ml-2 text-xs ${cfg.isOpen ? "border-emerald-400 text-emerald-700" : "border-red-400 text-red-700"}`}>
                     {cfg.isOpen ? "开放中" : "已关闭"}

@@ -1,0 +1,11 @@
+{
+  "query": "SELECT * FROM experiment_config;\nINSERT INTO experiment_config (`condition`, target_participants, current_participants, is_open, invite_token, created_at, updated_at)\nVALUES ('MIX', 16, 0, 1, '', NOW(), NOW())\nON DUPLICATE KEY UPDATE `condition` = `condition`;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4EMZXV1BE262rJP.02474c5205e2 --database Yac4zPy3BEzfVh9QddoaLw --execute SELECT * FROM experiment_config;\nINSERT INTO experiment_config (`condition`, target_participants, current_participants, is_open, invite_token, created_at, updated_at)\nVALUES ('MIX', 16, 0, 1, '', NOW(), NOW())\nON DUPLICATE KEY UPDATE `condition` = `condition`;",
+  "returncode": 1,
+  "logs": [
+    "id\tcondition\ttargetParticipants\tinviteToken\tisOpen\tcreatedAt\tupdatedAt",
+    "1\tAO\t8\t6Eo5W51-kkk_miFLKLQ1-SKX\t1\t2026-02-26 03:50:27\t2026-02-26 09:11:02",
+    "2\tAJ\t8\tz8sz114UBkY3oA2q6PpUt4aM\t1\t2026-02-26 03:50:27\t2026-02-26 08:23:06",
+    "ERROR 1054 (42S22) at line 2: Unknown column 'target_participants' in 'field list'"
+  ]
+}

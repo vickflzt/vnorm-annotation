@@ -1,0 +1,9 @@
+{
+  "query": "SELECT * FROM experiment_config WHERE `condition` = 'MIX';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4EMZXV1BE262rJP.02474c5205e2 --database Yac4zPy3BEzfVh9QddoaLw --execute SELECT * FROM experiment_config WHERE `condition` = 'MIX';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 452
+}

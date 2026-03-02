@@ -1,0 +1,25 @@
+{
+  "query": "SELECT `condition`, CHAR_LENGTH(inviteToken) as token_len, LEFT(inviteToken, 20) as token_preview FROM experiment_config ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4EMZXV1BE262rJP.02474c5205e2 --database Yac4zPy3BEzfVh9QddoaLw --execute SELECT `condition`, CHAR_LENGTH(inviteToken) as token_len, LEFT(inviteToken, 20) as token_preview FROM experiment_config ORDER BY id;",
+  "rows": [
+    {
+      "condition": "AO",
+      "token_len": "24",
+      "token_preview": "6Eo5W51-kkk_miFLKLQ1"
+    },
+    {
+      "condition": "AJ",
+      "token_len": "24",
+      "token_preview": "z8sz114UBkY3oA2q6PpU"
+    },
+    {
+      "condition": "MIX",
+      "token_len": "0",
+      "token_preview": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "condition\ttoken_len\ttoken_preview\nAO\t24\t6Eo5W51-kkk_miFLKLQ1\nAJ\t24\tz8sz114UBkY3oA2q6PpU\nMIX\t0\t\n",
+  "stderr": "",
+  "execution_time_ms": 384
+}

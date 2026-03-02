@@ -102,3 +102,5 @@
 - [x] MIX session 创建逻辑：预先生成 16个固定 session，题目级 condition 传递
 - [x] 前端 QuestionPage 支持题目级 itemCondition
 - [x] 管理后台 MIX 组配额管理、手动触发生成、刷新配额功能
+- [x] 后台看板新增 MIX 组专属区域（覆盖率统计、session 列表）
+- [x] MIX 组生成独立邀请链接（token 机制）
