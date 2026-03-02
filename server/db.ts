@@ -349,6 +349,8 @@ export async function getExperimentConfig() {
 }
 
 export async function getExperimentConfigByToken(token: string) {
+  // Reject empty tokens to prevent matching rows with empty inviteToken
+  if (!token || token.trim() === "") return undefined;
   const db = await getDb();
   if (!db) return undefined;
   const result = await db
@@ -357,6 +359,72 @@ export async function getExperimentConfigByToken(token: string) {
     .where(eq(experimentConfig.inviteToken, token))
     .limit(1);
   return result[0];
+}
+
+/**
+ * Atomically claim a MIX session slot by setting startedAt.
+ * Returns the participantId if successful, null if no slot was available.
+ * Uses UPDATE ... WHERE startedAt IS NULL to prevent race conditions.
+ */
+export async function claimMixSession(): Promise<string | null> {
+  const db = await getDb();
+  if (!db) return null;
+  // Get all unclaimed MIX sessions (status=consent, startedAt IS NULL)
+  const available = await db
+    .select({ participantId: participantSessions.participantId })
+    .from(participantSessions)
+    .where(
+      and(
+        eq(participantSessions.condition, "MIX"),
+        eq(participantSessions.status, "consent"),
+        sql`${participantSessions.startedAt} IS NULL`
+      )
+    )
+    .orderBy(asc(participantSessions.mixTemplateId), asc(participantSessions.mixSlot))
+    .limit(1);
+  if (available.length === 0) return null;
+  const candidateId = available[0].participantId;
+  // Atomically claim: only update if startedAt is still NULL
+  const result = await db
+    .update(participantSessions)
+    .set({ startedAt: new Date() })
+    .where(
+      and(
+        eq(participantSessions.participantId, candidateId),
+        sql`${participantSessions.startedAt} IS NULL`
+      )
+    );
+  // Check if the update actually affected a row
+  const affectedRows = (result as unknown as [{ affectedRows: number }])[0]?.affectedRows ?? 0;
+  if (affectedRows === 0) {
+    // Another request claimed this slot first; retry once
+    const retry = await db
+      .select({ participantId: participantSessions.participantId })
+      .from(participantSessions)
+      .where(
+        and(
+          eq(participantSessions.condition, "MIX"),
+          eq(participantSessions.status, "consent"),
+          sql`${participantSessions.startedAt} IS NULL`
+        )
+      )
+      .orderBy(asc(participantSessions.mixTemplateId), asc(participantSessions.mixSlot))
+      .limit(1);
+    if (retry.length === 0) return null;
+    const retryId = retry[0].participantId;
+    const retryResult = await db
+      .update(participantSessions)
+      .set({ startedAt: new Date() })
+      .where(
+        and(
+          eq(participantSessions.participantId, retryId),
+          sql`${participantSessions.startedAt} IS NULL`
+        )
+      );
+    const retryAffected = (retryResult as unknown as [{ affectedRows: number }])[0]?.affectedRows ?? 0;
+    return retryAffected > 0 ? retryId : null;
+  }
+  return candidateId;
 }
 
 export async function upsertExperimentConfig(

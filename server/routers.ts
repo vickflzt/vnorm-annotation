@@ -12,6 +12,7 @@ import {
   getAllSessions,
   getAllViolations,
   getExperimentConfig,
+  claimMixSession,
   getExperimentConfigByToken,
   getItemCoverageStats,
   getMixSessionCount,
@@ -79,16 +80,23 @@ const experimentRouter = router({
       }
 
       if (condition === "MIX") {
-        // For MIX, find an unclaimed pre-generated session (status = "consent", no participantCode yet)
-        // The pre-generated sessions already have participantIds; we just return one.
-        const mixSessions = await getMixSessions();
-        // Find a session that hasn't been started (no startedAt, status = consent)
-        const available = mixSessions.find((s) => s.status === "consent" && !s.startedAt);
-        if (!available) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "No available MIX session slots. Please ask the administrator to regenerate MIX sessions." });
+        // Atomically claim a pre-generated MIX session slot
+        const claimedId = await claimMixSession();
+        if (!claimedId) {
+          const count = await getMixSessionCount();
+          if (count === 0) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "MIX sessions have not been generated yet. Please ask the administrator to generate MIX sessions from the admin dashboard."
+            });
+          }
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "No available MIX session slots. All slots are currently in use or have been completed."
+          });
         }
         return {
-          participantId: available.participantId,
+          participantId: claimedId,
           condition: "MIX" as const,
           totalItems: 16,
         };

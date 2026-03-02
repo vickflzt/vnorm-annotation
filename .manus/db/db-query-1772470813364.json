@@ -1,0 +1,17 @@
+{
+  "query": "SELECT participantId, status, startedAt, mixTemplateId, mixSlot FROM participant_sessions WHERE `condition` = 'MIX' AND startedAt IS NOT NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4EMZXV1BE262rJP.02474c5205e2 --database Yac4zPy3BEzfVh9QddoaLw --execute SELECT participantId, status, startedAt, mixTemplateId, mixSlot FROM participant_sessions WHERE `condition` = 'MIX' AND startedAt IS NOT NULL;",
+  "rows": [
+    {
+      "participantId": "0ye43saguHs3",
+      "status": "consent",
+      "startedAt": "2026-03-02 17:00:06",
+      "mixTemplateId": "1",
+      "mixSlot": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "participantId\tstatus\tstartedAt\tmixTemplateId\tmixSlot\n0ye43saguHs3\tconsent\t2026-03-02 17:00:06\t1\t0\n",
+  "stderr": "",
+  "execution_time_ms": 353
+}

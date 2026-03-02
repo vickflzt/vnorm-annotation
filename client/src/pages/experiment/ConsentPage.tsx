@@ -24,8 +24,13 @@ export function ConsentPage({ participantId, onConsented }: ConsentPageProps) {
       return;
     }
     setShowError(false);
-    await giveConsent.mutateAsync({ participantId });
-    onConsented();
+    try {
+      await giveConsent.mutateAsync({ participantId });
+      onConsented();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      toast.error(`Failed to record consent: ${msg}. Please refresh and try again. / 记录同意失败：${msg}，请刷新页面重试。`);
+    }
   };
 
   return (

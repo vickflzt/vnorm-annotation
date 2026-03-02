@@ -1,0 +1,138 @@
+{
+  "query": "SELECT participantId, `condition`, status, mixTemplateId, mixSlot, startedAt FROM participant_sessions WHERE `condition` = 'MIX' ORDER BY mixTemplateId, mixSlot LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4EMZXV1BE262rJP.02474c5205e2 --database Yac4zPy3BEzfVh9QddoaLw --execute SELECT participantId, `condition`, status, mixTemplateId, mixSlot, startedAt FROM participant_sessions WHERE `condition` = 'MIX' ORDER BY mixTemplateId, mixSlot LIMIT 20;",
+  "rows": [
+    {
+      "participantId": "0ye43saguHs3",
+      "condition": "MIX",
+      "status": "consent",
+      "mixTemplateId": "1",
+      "mixSlot": "0",
+      "startedAt": "NULL"
+    },
+    {
+      "participantId": "WMYsAbqv5XuY",
+      "condition": "MIX",
+      "status": "consent",
+      "mixTemplateId": "1",
+      "mixSlot": "1",
+      "startedAt": "NULL"
+    },
+    {
+      "participantId": "o7KYjsuvCvL3",
+      "condition": "MIX",
+      "status": "consent",
+      "mixTemplateId": "2",
+      "mixSlot": "0",
+      "startedAt": "NULL"
+    },
+    {
+      "participantId": "SGgbC5tAkK4z",
+      "condition": "MIX",
+      "status": "consent",
+      "mixTemplateId": "2",
+      "mixSlot": "1",
+      "startedAt": "NULL"
+    },
+    {
+      "participantId": "7SezM3UjO34g",
+      "condition": "MIX",
+      "status": "consent",
+      "mixTemplateId": "3",
+      "mixSlot": "0",
+      "startedAt": "NULL"
+    },
+    {
+      "participantId": "mTnzWMaHs20v",
+      "condition": "MIX",
+      "status": "consent",
+      "mixTemplateId": "3",
+      "mixSlot": "1",
+      "startedAt": "NULL"
+    },
+    {
+      "participantId": "9ASL4e1GzrR7",
+      "condition": "MIX",
+      "status": "consent",
+      "mixTemplateId": "4",
+      "mixSlot": "0",
+      "startedAt": "NULL"
+    },
+    {
+      "participantId": "3wrxCHLF14uI",
+      "condition": "MIX",
+      "status": "consent",
+      "mixTemplateId": "4",
+      "mixSlot": "1",
+      "startedAt": "NULL"
+    },
+    {
+      "participantId": "54TnrACc67sl",
+      "condition": "MIX",
+      "status": "consent",
+      "mixTemplateId": "5",
+      "mixSlot": "0",
+      "startedAt": "NULL"
+    },
+    {
+      "participantId": "rvYSGzR2J3L5",
+      "condition": "MIX",
+      "status": "consent",
+      "mixTemplateId": "5",
+      "mixSlot": "1",
+      "startedAt": "NULL"
+    },
+    {
+      "participantId": "LQAH1dHWlXy7",
+      "condition": "MIX",
+      "status": "consent",
+      "mixTemplateId": "6",
+      "mixSlot": "0",
+      "startedAt": "NULL"
+    },
+    {
+      "participantId": "h12RT7RHthfE",
+      "condition": "MIX",
+      "status": "consent",
+      "mixTemplateId": "6",
+      "mixSlot": "1",
+      "startedAt": "NULL"
+    },
+    {
+      "participantId": "Vl5eVLqKAMB6",
+      "condition": "MIX",
+      "status": "consent",
+      "mixTemplateId": "7",
+      "mixSlot": "0",
+      "startedAt": "NULL"
+    },
+    {
+      "participantId": "CKPRzJ8FWWq7",
+      "condition": "MIX",
+      "status": "consent",
+      "mixTemplateId": "7",
+      "mixSlot": "1",
+      "startedAt": "NULL"
+    },
+    {
+      "participantId": "WgC1VY7YNdbV",
+      "condition": "MIX",
+      "status": "consent",
+      "mixTemplateId": "8",
+      "mixSlot": "0",
+      "startedAt": "NULL"
+    },
+    {
+      "participantId": "9JCPHNHHUmKU",
+      "condition": "MIX",
+      "status": "consent",
+      "mixTemplateId": "8",
+      "mixSlot": "1",
+      "startedAt": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "participantId\tcondition\tstatus\tmixTemplateId\tmixSlot\tstartedAt\n0ye43saguHs3\tMIX\tconsent\t1\t0\tNULL\nWMYsAbqv5XuY\tMIX\tconsent\t1\t1\tNULL\no7KYjsuvCvL3\tMIX\tconsent\t2\t0\tNULL\nSGgbC5tAkK4z\tMIX\tconsent\t2\t1\tNULL\n7SezM3UjO34g\tMIX\tconsent\t3\t0\tNULL\nmTnzWMaHs20v\tMIX\tconsent\t3\t1\tNULL\n9ASL4e1GzrR7\tMIX\tconsent\t4\t0\tNULL\n3wrxCHLF14uI\tMIX\tconsent\t4\t1\tNULL\n54TnrACc67sl\tMIX\tconsent\t5\t0\tNULL\nrvYSGzR2J3L5\tMIX\tconsent\t5\t1\tNULL\nLQAH1dHWlXy7\tMIX\tconsent\t6\t0\tNULL\nh12RT7RHthfE\tMIX\tconsent\t6\t1\tNULL\nVl5eVLqKAMB6\tMIX\tconsent\t7\t0\tNULL\nCKPRzJ8FWWq7\tMIX\tconsent\t7\t1\tNULL\nWgC1VY7YNdbV\tMIX\tconsent\t8\t0\tNULL\n9JCPHNHHUmKU\tMIX\tconsent\t8\t1\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 364
+}

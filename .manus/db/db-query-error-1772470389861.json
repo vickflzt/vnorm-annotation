@@ -1,0 +1,8 @@
+{
+  "query": "\nSELECT condition, inviteToken, isOpen, quota FROM experiment_config;\nSELECT COUNT(*) as mixCount, status FROM participant_sessions WHERE condition = 'MIX' GROUP BY status;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4EMZXV1BE262rJP.02474c5205e2 --database Yac4zPy3BEzfVh9QddoaLw --execute \nSELECT condition, inviteToken, isOpen, quota FROM experiment_config;\nSELECT COUNT(*) as mixCount, status FROM participant_sessions WHERE condition = 'MIX' GROUP BY status;\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 2: Unknown column 'quota' in 'field list'"
+  ]
+}

@@ -464,6 +464,11 @@ function ConfigTab() {
                 <Button size="sm" onClick={() => regenerateToken.mutate({ condition: cfg.condition })}>生成分享链接</Button>
               )}
               <p className="text-xs text-slate-400 mt-1.5">被试通过此链接访问时将自动分配到 {cfg.condition} 组。点击刷新图标可重新生成（旧链接立即失效）。</p>
+              {cfg.condition === "MIX" && cfg.inviteToken && (mixStatus?.total ?? 0) === 0 && (
+                <p className="text-xs text-amber-600 mt-1.5 font-medium">
+                  ⚠ MIX 分享链接已生成，但尚未生成 Session。请先在下方"MIX 组 Session 管理"区域点击"生成 16 个 MIX Session"，再将链接发给被试。
+                </p>
+              )}
             </div>
           </div>
         );

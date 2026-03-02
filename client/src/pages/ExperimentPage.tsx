@@ -57,8 +57,16 @@ export default function ExperimentPage() {
       setStage("consent");
     } catch (e: unknown) {
       setStage("landing");
-      const msg = e instanceof Error ? e.message : "未知错误";
-      setTokenError(`创建会话失败：${msg}`);
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      if (msg.includes("not been generated") || msg.includes("No available MIX")) {
+        setTokenError(
+          `The MIX experiment group is not ready yet. Please contact the study administrator.\n\nMIX 实验组尚未准备就绪，请联系实验负责人。\n\n(${msg})`
+        );
+      } else if (msg.includes("Invalid invite token")) {
+        setTokenError("邀请链接无效或已过期。\nInvalid or expired invite link.");
+      } else {
+        setTokenError(`Failed to start session: ${msg}\n\n创建会话失败：${msg}`);
+      }
     }
   };
 

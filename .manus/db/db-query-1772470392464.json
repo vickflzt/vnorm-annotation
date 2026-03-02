@@ -1,0 +1,25 @@
+{
+  "query": "SELECT condition, inviteToken, isOpen FROM experiment_config;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4EMZXV1BE262rJP.02474c5205e2 --database Yac4zPy3BEzfVh9QddoaLw --execute SELECT condition, inviteToken, isOpen FROM experiment_config;",
+  "rows": [
+    {
+      "condition": "AO",
+      "inviteToken": "6Eo5W51-kkk_miFLKLQ1-SKX",
+      "isOpen": "1"
+    },
+    {
+      "condition": "AJ",
+      "inviteToken": "z8sz114UBkY3oA2q6PpUt4aM",
+      "isOpen": "1"
+    },
+    {
+      "condition": "MIX",
+      "inviteToken": "SB2vLUudtV7FlmrMYqxuy4-t",
+      "isOpen": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "condition\tinviteToken\tisOpen\nAO\t6Eo5W51-kkk_miFLKLQ1-SKX\t1\nAJ\tz8sz114UBkY3oA2q6PpUt4aM\t1\nMIX\tSB2vLUudtV7FlmrMYqxuy4-t\t1\n",
+  "stderr": "",
+  "execution_time_ms": 346
+}

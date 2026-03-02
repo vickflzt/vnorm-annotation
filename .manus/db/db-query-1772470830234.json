@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE participant_sessions SET status = 'consent', startedAt = NULL, consentGiven = 0 WHERE participantId = '0ye43saguHs3';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4EMZXV1BE262rJP.02474c5205e2 --database Yac4zPy3BEzfVh9QddoaLw --execute UPDATE participant_sessions SET status = 'consent', startedAt = NULL, consentGiven = 0 WHERE participantId = '0ye43saguHs3';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 385
+}

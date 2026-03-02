@@ -1,0 +1,9 @@
+{
+  "query": "SELECT `condition`, status, COUNT(*) as cnt FROM participant_sessions GROUP BY `condition`, status;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4EMZXV1BE262rJP.02474c5205e2 --database Yac4zPy3BEzfVh9QddoaLw --execute SELECT `condition`, status, COUNT(*) as cnt FROM participant_sessions GROUP BY `condition`, status;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 368
+}
