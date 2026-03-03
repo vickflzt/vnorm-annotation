@@ -8,6 +8,7 @@ import {
   timestamp,
   varchar,
   float,
+  uniqueIndex,
 } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
@@ -28,7 +29,8 @@ export type InsertUser = typeof users.$inferInsert;
 // ─── Question Bank ───────────────────────────────────────────────────────────
 export const questionBank = mysqlTable("question_bank", {
   id: int("id").autoincrement().primaryKey(),
-  itemId: varchar("itemId", { length: 32 }).notNull().unique(), // e.g. TP01, FN07, GSM-CHECK
+  itemId: varchar("itemId", { length: 32 }).notNull(), // e.g. TP01, FN07, GSM-CHECK
+  version: varchar("version", { length: 8 }).notNull().default("v1"), // v1 | v2 | ...
   category: mysqlEnum("category", ["TP", "TN", "FP", "FN", "GSM-CHECK"]).notNull(),
   source: varchar("source", { length: 32 }).notNull(), // MATH500 | GSM8K
   question: text("question").notNull(),
@@ -46,7 +48,9 @@ export const questionBank = mysqlTable("question_bank", {
   countAO: int("countAO").default(0).notNull(),   // how many AO annotations collected
   countAJ: int("countAJ").default(0).notNull(),   // how many AJ annotations collected
   targetCount: int("targetCount").default(3).notNull(), // target per condition
-});
+}, (table) => ({
+  itemVersionIdx: uniqueIndex("item_version_idx").on(table.itemId, table.version),
+}));
 
 export type QuestionBankItem = typeof questionBank.$inferSelect;
 
