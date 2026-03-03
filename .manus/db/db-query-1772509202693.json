@@ -1,0 +1,162 @@
+{
+  "query": "DESCRIBE question_bank;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4EMZXV1BE262rJP.02474c5205e2 --database Yac4zPy3BEzfVh9QddoaLw --execute DESCRIBE question_bank;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment"
+    },
+    {
+      "Field": "itemId",
+      "Type": "varchar(32)",
+      "Null": "NO",
+      "Key": "UNI",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "category",
+      "Type": "enum('TP','TN','FP','FN','GSM-CHECK')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "source",
+      "Type": "varchar(32)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "question",
+      "Type": "text",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "goldAnswer",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "extractedGoldAnswer",
+      "Type": "varchar(256)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "response",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "extractedResponseAnswer",
+      "Type": "varchar(256)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "gtIsCorrect",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "inferenceModel",
+      "Type": "varchar(128)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "difficultyLevel",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "subject",
+      "Type": "varchar(128)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "uniqueId",
+      "Type": "varchar(256)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "sourceCondition",
+      "Type": "varchar(32)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "countAO",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "countAJ",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "targetCount",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "3",
+      "Extra": ""
+    },
+    {
+      "Field": "figureUrl",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tint\tNO\tPRI\tNULL\tauto_increment\nitemId\tvarchar(32)\tNO\tUNI\tNULL\t\ncategory\tenum('TP','TN','FP','FN','GSM-CHECK')\tNO\t\tNULL\t\nsource\tvarchar(32)\tNO\t\tNULL\t\nquestion\ttext\tNO\t\tNULL\t\ngoldAnswer\ttext\tYES\t\tNULL\t\nextractedGoldAnswer\tvarchar(256)\tYES\t\tNULL\t\nresponse\ttext\tYES\t\tNULL\t\nextractedResponseAnswer\tvarchar(256)\tYES\t\tNULL\t\ngtIsCorrect\ttinyint(1)\tNO\t\tNULL\t\ninferenceModel\tvarchar(128)\tYES\t\tNULL\t\ndifficultyLevel\tint\tYES\t\tNULL\t\nsubject\tvarchar(128)\tYES\t\tNULL\t\nuniqueId\tvarchar(256)\tYES\t\tNULL\t\nsourceCondition\tvarchar(32)\tYES\t\tNULL\t\ncountAO\tint\tNO\t\t0\t\ncountAJ\tint\tNO\t\t0\t\ntargetCount\tint\tNO\t\t3\t\nfigureUrl\ttext\tYES\t\tNULL\t\n",
+  "stderr": "",
+  "execution_time_ms": 369
+}
