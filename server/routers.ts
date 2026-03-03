@@ -12,6 +12,7 @@ import {
   getAllSessions,
   getAllViolations,
   getExperimentConfig,
+  getExperimentConfigByCondition,
   claimMixSession,
   getExperimentConfigByToken,
   getItemCoverageStats,
@@ -70,15 +71,18 @@ const experimentRouter = router({
     }))
     .mutation(async ({ input }) => {
       let condition: "AO" | "AJ" | "MIX";
+      let questionVersion = "v1";
       if (input.inviteToken) {
         const config = await getExperimentConfigByToken(input.inviteToken);
         if (!config) throw new TRPCError({ code: "NOT_FOUND", message: "Invalid invite token" });
         if (!config.isOpen) throw new TRPCError({ code: "FORBIDDEN", message: "This group is closed" });
         condition = config.condition;
+        questionVersion = config.questionVersion ?? "v1";
       } else {
         condition = input.preferredCondition ?? (Math.random() < 0.5 ? "AO" : "AJ");
+        const cfg = await getExperimentConfigByCondition(condition);
+        questionVersion = cfg?.questionVersion ?? "v1";
       }
-
       if (condition === "MIX") {
         // Atomically claim a pre-generated MIX session slot
         const claimedId = await claimMixSession();
@@ -103,7 +107,7 @@ const experimentRouter = router({
       }
 
       // AO or AJ
-      const mathItems = await sampleQuestionsForSession(condition);
+      const mathItems = await sampleQuestionsForSession(condition, questionVersion);
       const gsmCheckId = "GSM-CHECK";
       const before = mathItems.slice(0, 7);
       const after = mathItems.slice(7);
@@ -137,7 +141,10 @@ const experimentRouter = router({
       }
 
       const itemIds = rawItems.map((x) => (typeof x === "string" ? x : x.itemId));
-      const questions = await getQuestionsByItemIds(itemIds);
+      // Determine question version from experiment config for this session's condition
+      const sessionCfg = await getExperimentConfigByCondition(session.condition as "AO" | "AJ" | "MIX");
+      const sessionVersion = sessionCfg?.questionVersion ?? "v1";
+      const questions = await getQuestionsByItemIds(itemIds, sessionVersion);
 
       const orderedQuestions = rawItems.map((entry) => {
         const itemId = typeof entry === "string" ? entry : entry.itemId;
@@ -276,7 +283,9 @@ const experimentRouter = router({
 
       // Increment quota counter for non-GSM items
       if (input.category !== "GSM-CHECK") {
-        await incrementQuestionCount(input.itemId, effectiveCondition);
+        const submitCfg = await getExperimentConfigByCondition(session.condition as "AO" | "AJ" | "MIX");
+        const submitVersion = submitCfg?.questionVersion ?? "v1";
+        await incrementQuestionCount(input.itemId, effectiveCondition, submitVersion);
       }
 
       // Advance currentIndex
@@ -435,12 +444,14 @@ const dashboardRouter = router({
         condition: z.enum(["AO", "AJ", "MIX"]),
         targetParticipants: z.number().int().min(1).max(500).optional(),
         isOpen: z.boolean().optional(),
+        questionVersion: z.string().optional(),
       })
     )
     .mutation(async ({ input }) => {
       await upsertExperimentConfig(input.condition, {
         targetParticipants: input.targetParticipants,
         isOpen: input.isOpen,
+        questionVersion: input.questionVersion,
       });
       return { ok: true };
     }),
@@ -570,7 +581,9 @@ const dashboardRouter = router({
       if (existingCount > 0 && input.force) {
         await resetMixQuota();
       }
-      const ids = await generateMixSessions(() => nanoid(12));
+      const mixCfg = await getExperimentConfigByCondition("MIX");
+      const mixVersion = mixCfg?.questionVersion ?? "v1";
+      const ids = await generateMixSessions(() => nanoid(12), mixVersion);
       return { success: true, count: ids.length, participantIds: ids };
     }),
 

@@ -77,7 +77,7 @@ console.log(`✓ Cleared ${mixSessions.length} existing MIX sessions`);
 
 // ── Step 2: Fetch question bank (v1 only, same as server) ─────────────────────
 const [allItems] = await conn.execute(
-  `SELECT itemId, category FROM question_bank WHERE version='v1' AND category != 'GSM-CHECK'`
+  `SELECT itemId, category FROM question_bank WHERE version='v3' AND category != 'GSM-CHECK'`
 );
 const cellItems = { TP: [], TN: [], FP: [], FN: [] };
 for (const item of allItems) {

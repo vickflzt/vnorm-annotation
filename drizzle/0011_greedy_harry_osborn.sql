@@ -1,0 +1,1 @@
+ALTER TABLE `experiment_config` ADD `questionVersion` varchar(8) DEFAULT 'v1' NOT NULL;

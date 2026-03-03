@@ -104,4 +104,14 @@
 - [x] 管理后台 MIX 组配额管理、手动触发生成、刷新配额功能
 - [x] 后台看板新增 MIX 组专属区域（覆盖率统计、session 列表）
 - [x] MIX 组生成独立邀请链接（token 机制）
-- [ ] 修复 MIX 组点击知情同意书"同意并开始"后无反应的 bug
+- [x] 修复 MIX 组点击知情同意书"同意并开始"后无反应的 bug（claimMixSession 原子操作）
+## V3 题库迁移
+- [x] MIX session 严格交替 AO/AJ 顺序（Slot0 AO开头，Slot1 AJ开头），GSM-CHECK 固定第16题
+- [x] 删除 FN04/FN09/FN10 中的 Asymptote [asy] 绘图代码，TN07 tabular 转 Markdown 表格
+- [x] 上传 FN09 三角形图片到 CDN，更新 figureUrl（v1/v2/v3）
+- [x] 插入 v3 题库（41道：34道来自v1，6道来自v2替换，1道GSM-CHECK）
+- [x] experiment_config 表新增 questionVersion 字段（默认 v1）
+- [x] db.ts 所有题目查询函数加 version 参数过滤
+- [x] routers.ts 读取 questionVersion 并传递给查询函数
+- [x] 将三个条件（AO/AJ/MIX）的 questionVersion 设为 v3
+- [x] 用 v3 题库重新生成 16 个 MIX sessions（15/15 测试通过）

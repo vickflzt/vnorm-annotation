@@ -128,6 +128,7 @@ export const experimentConfig = mysqlTable("experiment_config", {
   targetParticipants: int("targetParticipants").default(30).notNull(),
   inviteToken: varchar("inviteToken", { length: 64 }).notNull().unique(), // secret token for share link
   isOpen: boolean("isOpen").default(true).notNull(), // whether this condition is accepting new participants
+  questionVersion: varchar("questionVersion", { length: 8 }).notNull().default("v1"), // which question bank version to use
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

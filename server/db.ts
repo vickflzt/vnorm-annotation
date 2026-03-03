@@ -76,18 +76,20 @@ export async function getAllQuestions() {
   return db.select().from(questionBank).orderBy(asc(questionBank.itemId));
 }
 
-export async function getQuestionByItemId(itemId: string) {
+export async function getQuestionByItemId(itemId: string, version = "v1") {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.select().from(questionBank).where(eq(questionBank.itemId, itemId)).limit(1);
+  const result = await db.select().from(questionBank).where(
+    and(eq(questionBank.itemId, itemId), eq(questionBank.version, version))
+  ).limit(1);
   return result[0];
 }
 
-export async function getQuestionsByItemIds(itemIds: string[]) {
+export async function getQuestionsByItemIds(itemIds: string[], version = "v1") {
   const db = await getDb();
   if (!db) return [];
   if (itemIds.length === 0) return [];
-  const results = await db.select().from(questionBank);
+  const results = await db.select().from(questionBank).where(eq(questionBank.version, version));
   return results.filter((q) => itemIds.includes(q.itemId));
 }
 
@@ -96,7 +98,8 @@ export async function getQuestionsByItemIds(itemIds: string[]) {
  * Prioritises items with the lowest count for the given condition.
  */
 export async function sampleQuestionsForSession(
-  condition: "AO" | "AJ"
+  condition: "AO" | "AJ",
+  version = "v1"
 ): Promise<string[]> {
   const db = await getDb();
   if (!db) return [];
@@ -108,7 +111,8 @@ export async function sampleQuestionsForSession(
     .where(
       and(
         lt(countCol, questionBank.targetCount),
-        sql`${questionBank.category} != 'GSM-CHECK'`
+        sql`${questionBank.category} != 'GSM-CHECK'`,
+        eq(questionBank.version, version)
       )
     )
     .orderBy(asc(countCol));
@@ -136,7 +140,10 @@ export async function sampleQuestionsForSession(
     const all = await db
       .select({ itemId: questionBank.itemId, question: questionBank.question })
       .from(questionBank)
-      .where(sql`${questionBank.category} != 'GSM-CHECK'`);
+      .where(and(
+        sql`${questionBank.category} != 'GSM-CHECK'`,
+        eq(questionBank.version, version)
+      ));
     const allShuffled = all.sort(() => Math.random() - 0.5);
     const fallback: string[] = [];
     const fallbackSeen = new Set<string>();
@@ -155,7 +162,8 @@ export async function sampleQuestionsForSession(
 
 export async function incrementQuestionCount(
   itemId: string,
-  condition: "AO" | "AJ"
+  condition: "AO" | "AJ",
+  version = "v1"
 ) {
   const db = await getDb();
   if (!db) return;
@@ -163,12 +171,12 @@ export async function incrementQuestionCount(
     await db
       .update(questionBank)
       .set({ countAO: sql`${questionBank.countAO} + 1` })
-      .where(eq(questionBank.itemId, itemId));
+      .where(and(eq(questionBank.itemId, itemId), eq(questionBank.version, version)));
   } else {
     await db
       .update(questionBank)
       .set({ countAJ: sql`${questionBank.countAJ} + 1` })
-      .where(eq(questionBank.itemId, itemId));
+      .where(and(eq(questionBank.itemId, itemId), eq(questionBank.version, version)));
   }
 }
 
@@ -348,6 +356,16 @@ export async function getExperimentConfig() {
   return db.select().from(experimentConfig).orderBy(asc(experimentConfig.condition));
 }
 
+export async function getExperimentConfigByCondition(condition: "AO" | "AJ" | "MIX") {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db
+    .select()
+    .from(experimentConfig)
+    .where(eq(experimentConfig.condition, condition))
+    .limit(1);
+  return result[0];
+}
 export async function getExperimentConfigByToken(token: string) {
   // Reject empty tokens to prevent matching rows with empty inviteToken
   if (!token || token.trim() === "") return undefined;
@@ -429,7 +447,7 @@ export async function claimMixSession(): Promise<string | null> {
 
 export async function upsertExperimentConfig(
   condition: "AO" | "AJ" | "MIX",
-  data: { targetParticipants?: number; inviteToken?: string; isOpen?: boolean }
+  data: { targetParticipants?: number; inviteToken?: string; isOpen?: boolean; questionVersion?: string }
 ) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
@@ -483,8 +501,25 @@ export async function getItemCoverageStats() {
     .where(sql`${questionBank.category} != 'GSM-CHECK'`)
     .orderBy(asc(questionBank.itemId));
 }
-
-// ─── Quota Reset ──────────────────────────────────────────────────────────────
+export async function getItemCoverageStatsByVersion(version = "v1") {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      itemId: questionBank.itemId,
+      category: questionBank.category,
+      countAO: questionBank.countAO,
+      countAJ: questionBank.countAJ,
+      targetCount: questionBank.targetCount,
+    })
+    .from(questionBank)
+    .where(and(
+      sql`${questionBank.category} != 'GSM-CHECK'`,
+      eq(questionBank.version, version)
+    ))
+    .orderBy(asc(questionBank.itemId));
+}
+// ─── Quota Reset ───────────────────────────────────────────────────────────────
 
 /**
  * Reset ALL quota: wipe sessions, responses, violations, mix templates, and reset countAO/countAJ to 0.
@@ -635,16 +670,19 @@ function assignCellToTemplates(
  * Returns the 16 participantIds created.
  */
 export async function generateMixSessions(
-  participantIdGenerator: () => string
+  participantIdGenerator: () => string,
+  version = "v1"
 ): Promise<string[]> {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-
   // 1. Fetch all MATH500 items grouped by cell
   const allItems = await db
     .select({ itemId: questionBank.itemId, category: questionBank.category, question: questionBank.question })
     .from(questionBank)
-    .where(sql`${questionBank.category} != 'GSM-CHECK'`);
+    .where(and(
+      sql`${questionBank.category} != 'GSM-CHECK'`,
+      eq(questionBank.version, version)
+    ));;
 
   const cellItems: Record<string, string[]> = { TP: [], TN: [], FP: [], FN: [] };
   for (const item of allItems) {
