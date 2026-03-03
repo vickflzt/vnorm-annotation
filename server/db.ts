@@ -687,9 +687,12 @@ export async function generateMixSessions(
       throw new Error(`Template ${tk} has ${shuffledItems.length} items, expected 15`);
     }
 
-    // Generate AO/AJ mask: 8 AO + 7 AJ, randomly distributed
-    const maskArray: Array<"AO" | "AJ"> = [...Array(8).fill("AO"), ...Array(7).fill("AJ")];
-    const shuffledMask = shuffle(maskArray) as Array<"AO" | "AJ">;
+    // Generate strict alternating AO/AJ mask for 15 items:
+    //   Primary (slot 0): starts with AO → AO,AJ,AO,AJ,... → 8 AO + 7 AJ
+    //   Mirror  (slot 1): inversion of primary → starts with AJ → 8 AJ + 7 AO
+    const shuffledMask: Array<"AO" | "AJ"> = Array.from({ length: 15 }, (_, i) =>
+      i % 2 === 0 ? "AO" : "AJ"
+    );
 
     // Primary items (slot 0): use mask as-is
     const primaryItems: MixAssignedItem[] = shuffledItems.map((itemId, idx) => ({
@@ -703,15 +706,16 @@ export async function generateMixSessions(
       condition: shuffledMask[idx] === "AO" ? "AJ" : "AO",
     }));
 
-    // Insert GSM-CHECK (AJ) at position 7 (0-indexed) for both
-    const insertGsm = (items: MixAssignedItem[]): MixAssignedItem[] => {
-      const before = items.slice(0, 7);
-      const after = items.slice(7);
-      return [...before, { itemId: GSM_CHECK_ID, condition: "AJ" }, ...after];
-    };
+    // Append GSM-CHECK (AJ) at the end (position 16) for both slots
+    // Slot 0: 15 math items (AO,AJ,...,AO) + GSM-CHECK(AJ) = 8 AO + 8 AJ
+    // Slot 1: 15 math items (AJ,AO,...,AJ) + GSM-CHECK(AJ) = 7 AO + 9 AJ
+    const appendGsm = (items: MixAssignedItem[]): MixAssignedItem[] => [
+      ...items,
+      { itemId: GSM_CHECK_ID, condition: "AJ" },
+    ];
 
-    const primaryFull = insertGsm(primaryItems);
-    const mirrorFull = insertGsm(mirrorItems);
+    const primaryFull = appendGsm(primaryItems);
+    const mirrorFull = appendGsm(mirrorItems);
 
     // Persist template record (stores primary items without GSM for reference)
     await db.insert(mixSessionTemplates).values({
