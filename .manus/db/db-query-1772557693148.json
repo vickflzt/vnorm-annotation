@@ -1,0 +1,20 @@
+{
+  "query": "SELECT itemId, category, figureUrl FROM question_bank WHERE version = 'v3' AND figureUrl IS NOT NULL AND figureUrl != '' ORDER BY itemId;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4EMZXV1BE262rJP.02474c5205e2 --database Yac4zPy3BEzfVh9QddoaLw --execute SELECT itemId, category, figureUrl FROM question_bank WHERE version = 'v3' AND figureUrl IS NOT NULL AND figureUrl != '' ORDER BY itemId;",
+  "rows": [
+    {
+      "itemId": "FN04",
+      "category": "FN",
+      "figureUrl": "https://files.manuscdn.com/user_upload_by_module/session_file/310519663306550815/vgQSXCnBzJOXblRc.png"
+    },
+    {
+      "itemId": "FN10",
+      "category": "FN",
+      "figureUrl": "https://files.manuscdn.com/user_upload_by_module/session_file/310519663306550815/IBlqMVboVlSoJdLA.png"
+    }
+  ],
+  "messages": [],
+  "stdout": "itemId\tcategory\tfigureUrl\nFN04\tFN\thttps://files.manuscdn.com/user_upload_by_module/session_file/310519663306550815/vgQSXCnBzJOXblRc.png\nFN10\tFN\thttps://files.manuscdn.com/user_upload_by_module/session_file/310519663306550815/IBlqMVboVlSoJdLA.png\n",
+  "stderr": "",
+  "execution_time_ms": 362
+}
