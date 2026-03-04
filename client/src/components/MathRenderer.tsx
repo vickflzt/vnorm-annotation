@@ -152,7 +152,24 @@ function tokeniseInline(src: string): Token[] {
  * Handles mixed lines where $$ block math appears inline with surrounding text,
  * e.g. "$$\\frac{...}{}$$for $x > 0.$" or "$$\\sum...$$,$$where $F_n$..."
  */
+/**
+ * Normalize alternate LaTeX delimiters to the canonical $$ / $ form used by our tokeniser.
+ *   \[ ... \]  →  $$...$$   (display / block math)
+ *   \( ... \)  →  $...$     (inline math)
+ * Both may span multiple lines.
+ */
+function normalizeLatexDelimiters(src: string): string {
+  // \[ ... \]  →  $$...$$
+  let out = src.replace(/\\\[([\s\S]*?)\\\]/g, (_m, inner) => `$$${inner}$$`);
+  // \( ... \)  →  $...$
+  out = out.replace(/\\\(([\s\S]*?)\\\)/g, (_m, inner) => `$${inner}$`);
+  return out;
+}
+
 function buildHtml(src: string): string {
+  // Normalize \[...\] and \(...\) to $$...$$ and $...$
+  src = normalizeLatexDelimiters(src);
+
   // Pre-process: split any line that has $$...$$ mixed with surrounding text
   // into separate virtual lines so the line-based parser can handle them.
   // Strategy: replace occurrences of (text)($$...$$)(text) on a single line
