@@ -356,6 +356,14 @@ function ConfigTab() {
     },
     onError: (e) => toast.error(`生成失败: ${e.message}`),
   });
+  const generateExtraMixMut = trpc.dashboard.generateExtraMixSessions.useMutation({
+    onSuccess: (data) => {
+      toast.success(`已额外生成 ${data.count} 个 MIX session`);
+      refetchMix();
+      refetch();
+    },
+    onError: (e) => toast.error(`生成失败: ${e.message}`),
+  });
   const resetMixMut = trpc.dashboard.resetMixQuota.useMutation({
     onSuccess: () => {
       toast.success("MIX 配额已重置");
@@ -486,7 +494,7 @@ function ConfigTab() {
               <span className="w-2 h-2 rounded-full bg-indigo-500 inline-block" />
               MIX 组 Session 管理
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">预先生成 8 模板 × 2 = 16 个固定 session，每个被试看到 8 AO + 7 AJ 混合题目</p>
+            <p className="text-xs text-slate-500 mt-0.5">预先生成 15 个固定 session，每套 16 道数学题（8 AJ + 8 AO）+ 1 道 GSM-CHECK = 17 题，每题每个实验组各标注 3 次</p>
           </div>
           <button onClick={() => refetchMix()} className="text-xs text-indigo-600 flex items-center gap-1 hover:underline">
             <RefreshCw className="w-3.5 h-3.5" /> 刷新
@@ -516,7 +524,7 @@ function ConfigTab() {
                 <tr className="border-b border-slate-200">
                   <th className="text-left py-1.5 px-2 text-slate-500 font-medium">被试ID</th>
                   <th className="text-left py-1.5 px-2 text-slate-500 font-medium">模板</th>
-                  <th className="text-left py-1.5 px-2 text-slate-500 font-medium">插槽</th>
+                  <th className="text-left py-1.5 px-2 text-slate-500 font-medium">Session #</th>
                   <th className="text-left py-1.5 px-2 text-slate-500 font-medium">被试编号</th>
                   <th className="text-left py-1.5 px-2 text-slate-500 font-medium">状态</th>
                 </tr>
@@ -526,7 +534,8 @@ function ConfigTab() {
                   <tr key={s.participantId} className="border-b border-slate-100 hover:bg-slate-50">
                     <td className="py-1.5 px-2 font-mono text-slate-600">{s.participantId.slice(0, 8)}…</td>
                     <td className="py-1.5 px-2 text-slate-500">T{s.mixTemplateId}</td>
-                    <td className="py-1.5 px-2 text-slate-500">{s.mixSlot === 0 ? "主插槽" : "镜像插槽"}</td>
+                    <td className="py-1.5 px-2 text-slate-500">{s.mixTemplateId}</td>
+                    {/* Session # column intentionally shows templateId as sequential number */}
                     <td className="py-1.5 px-2 text-slate-500">{s.participantCode ?? <span className="text-slate-300">未开始</span>}</td>
                     <td className="py-1.5 px-2">
                       <StatusBadge status={s.status} />
@@ -541,14 +550,14 @@ function ConfigTab() {
         {/* Action buttons */}
         <div className="flex flex-wrap gap-3">
           {(mixStatus?.total ?? 0) === 0 ? (
-            <Button
+              <Button
               size="sm"
               onClick={() => generateMixMut.mutate({ force: false })}
               disabled={generateMixMut.isPending}
               className="bg-indigo-600 hover:bg-indigo-700 text-white"
             >
               {generateMixMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
-              生成 16 个 MIX Session
+              生成 15 个 MIX Session
             </Button>
           ) : (
             <>
@@ -562,7 +571,7 @@ function ConfigTab() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>确认重新生成 MIX Session？</AlertDialogTitle>
                     <AlertDialogDescription>
-                      此操作将删除全部 {mixStatus?.total} 个 MIX session 及其答题记录，并重新生成 16 个新 session。
+                      此操作将删除全部 {mixStatus?.total} 个 MIX session 及其答题记录，并重新生成 15 个新 session。
                       <br /><br /><strong>此操作不可撤销，建议先导出数据备份。</strong>
                     </AlertDialogDescription>
                   </AlertDialogHeader>
@@ -578,6 +587,16 @@ function ConfigTab() {
                 </AlertDialogContent>
               </AlertDialog>
 
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-emerald-400 text-emerald-600 hover:bg-emerald-50"
+                onClick={() => generateExtraMixMut.mutate({ count: 5 })}
+                disabled={generateExtraMixMut.isPending}
+              >
+                {generateExtraMixMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+                +5 额外 Session
+              </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button size="sm" variant="outline" className="border-red-300 text-red-600 hover:bg-red-50">

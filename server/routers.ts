@@ -8,6 +8,7 @@ import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import {
   createSession,
   generateMixSessions,
+  generateExtraMixSessions,
   getAllResponses,
   getAllSessions,
   getAllViolations,
@@ -567,7 +568,7 @@ const dashboardRouter = router({
     };
   }),
 
-  /** Generate 8 templates × 2 slots = 16 MIX sessions. Fails if sessions already exist. */
+  /** Generate 15 MIX sessions (AJ-first, 16 math + 1 GSM-CHECK = 17 total). Fails if sessions already exist. */
   generateMixSessions: adminProcedure
     .input(z.object({ force: z.boolean().default(false) }))
     .mutation(async ({ input }) => {
@@ -582,8 +583,18 @@ const dashboardRouter = router({
         await resetMixQuota();
       }
       const mixCfg = await getExperimentConfigByCondition("MIX");
-      const mixVersion = mixCfg?.questionVersion ?? "v1";
+      const mixVersion = mixCfg?.questionVersion ?? "v3";
       const ids = await generateMixSessions(() => nanoid(12), mixVersion);
+      return { success: true, count: ids.length, participantIds: ids };
+    }),
+
+  /** Generate additional MIX sessions beyond the initial 15 (for overflow participants). */
+  generateExtraMixSessions: adminProcedure
+    .input(z.object({ count: z.number().int().min(1).max(50).default(5) }))
+    .mutation(async ({ input }) => {
+      const mixCfg = await getExperimentConfigByCondition("MIX");
+      const mixVersion = mixCfg?.questionVersion ?? "v3";
+      const ids = await generateExtraMixSessions(input.count, () => nanoid(12), mixVersion);
       return { success: true, count: ids.length, participantIds: ids };
     }),
 

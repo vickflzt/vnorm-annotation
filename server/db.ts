@@ -594,21 +594,14 @@ export async function releaseParticipantQuota(participantId: string) {
 export type MixAssignedItem = { itemId: string; condition: "AO" | "AJ" };
 
 /**
- * The fixed quota matrix for 8 templates × 4 cells (TP/TN/FP/FN).
- * Each row sums to 15; each column sums to 30 (= 10 items × 3 annotations).
+ * New design (v2): 15 sessions × 16 math questions (8 AJ + 8 AO) + 1 GSM-CHECK = 17 total.
+ * All sessions start with AJ (strict alternating: AJ,AO,AJ,AO,...,AJ,AO = 8 AJ + 8 AO).
+ * GSM-CHECK is inserted at a random AJ position (does not displace math questions).
+ * Each math question (40 total) appears exactly 3 times as AJ + 3 times as AO.
+ * Per session: 4 categories × (2 AJ + 2 AO) = 8 AJ + 8 AO math questions.
  */
-const QUOTA_MATRIX: Record<string, number[]> = {
-  // templateIndex 0..7 → [TP, TN, FP, FN]
-  T1: [3, 4, 4, 4],
-  T2: [3, 4, 4, 4],
-  T3: [4, 3, 4, 4],
-  T4: [4, 3, 4, 4],
-  T5: [4, 4, 4, 3],
-  T6: [4, 4, 4, 3],
-  T7: [4, 4, 3, 4],
-  T8: [4, 4, 3, 4],
-};
-const TEMPLATE_KEYS = ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8"] as const;
+const N_SESSIONS = 15;       // total MIX sessions
+const MATH_PER_SESSION = 16; // 8 AJ + 8 AO per session
 const CELLS = ["TP", "TN", "FP", "FN"] as const;
 
 function shuffle<T>(arr: T[]): T[] {
@@ -621,53 +614,51 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 /**
- * Constrained random assignment for one cell.
- * Assigns `items` (10 items) to 8 templates, each item appearing in exactly 3 templates,
- * respecting per-template quotas.
- * Returns a map: templateKey → itemId[]
- * Retries up to 100 times if a dead-end is reached.
+ * Assign 10 questions to 15 sessions such that each session gets exactly 2 questions
+ * and each question appears in exactly 3 sessions.
+ * Uses shuffle-based approach: repeat each question 3 times, shuffle, split into pairs.
+ * Retries up to 200 times to avoid duplicate questions within a session.
  */
-function assignCellToTemplates(
-  items: string[],
-  quotas: number[] // length 8, one per template
-): Map<string, string[]> | null {
-  const MAX_RETRIES = 100;
+function assignCategoryToSessions(
+  items: string[], // e.g. 10 items
+  nSessions: number, // e.g. 15
+  perSession: number, // items per session per category, e.g. 4
+  perItem: number // how many times each item appears total, e.g. 6
+): string[][] | null {
+  const MAX_RETRIES = 500;
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    const shuffledItems = shuffle(items);
-    const remaining = [...quotas]; // remaining quota per template
-    const assignment = new Map<string, string[]>(TEMPLATE_KEYS.map((k) => [k, []]));
-    let failed = false;
-
-    for (const itemId of shuffledItems) {
-      // Find templates with remaining quota > 0
-      const eligible = TEMPLATE_KEYS.filter((_, i) => remaining[i] > 0);
-      if (eligible.length < 3) { failed = true; break; }
-
-      // Sort eligible by remaining quota descending (greedy), then shuffle ties
-      const sorted = shuffle(eligible).sort((a, b) => {
-        const ia = TEMPLATE_KEYS.indexOf(a);
-        const ib = TEMPLATE_KEYS.indexOf(b);
-        return remaining[ib] - remaining[ia];
-      });
-
-      const chosen = sorted.slice(0, 3);
-      for (const tk of chosen) {
-        assignment.get(tk)!.push(itemId);
-        remaining[TEMPLATE_KEYS.indexOf(tk)]--;
+    const counts: Map<string, number> = new Map(items.map((id) => [id, 0]));
+    const sessions: string[][] = [];
+    let valid = true;
+    for (let si = 0; si < nSessions; si++) {
+      // Get items that still have quota remaining
+      const available = items.filter((id) => (counts.get(id) ?? 0) < perItem);
+      // Shuffle for randomness, then sort by count ascending (least-used first)
+      const shuffled = shuffle(available);
+      shuffled.sort((a, b) => (counts.get(a) ?? 0) - (counts.get(b) ?? 0));
+      const chosen = shuffled.slice(0, perSession);
+      // Reject if not enough items or duplicates
+      if (chosen.length < perSession || new Set(chosen).size < perSession) {
+        valid = false;
+        break;
       }
+      for (const id of chosen) counts.set(id, (counts.get(id) ?? 0) + 1);
+      sessions.push(chosen);
     }
-
-    if (!failed) return assignment;
+    if (valid) return sessions;
   }
-  return null; // should not happen with these small numbers
+  return null;
 }
 
 /**
- * Generate 8 MIX templates and 16 sessions, then persist them to the database.
- * Each template has 15 MATH500 items (with per-item AO/AJ condition).
- * GSM-CHECK is inserted at position 7 (0-indexed) as AJ for all sessions.
+ * Generate 15 MIX sessions (new design):
+ *   - Each session: 16 math questions (8 AJ + 8 AO, AJ-first strict alternating) + 1 GSM-CHECK = 17 total
+ *   - All sessions start with AJ: AJ,AO,AJ,AO,...,AJ,AO (positions 0,2,4,...,14 = AJ; 1,3,...,15 = AO)
+ *   - GSM-CHECK is inserted at a random AJ position (extra item, does not replace math questions)
+ *   - Each math question appears exactly 3 times as AJ + 3 times as AO across all 15 sessions
+ *   - Per category (10 questions): 2 questions per session, each question in 3 sessions
  *
- * Returns the 16 participantIds created.
+ * Returns the 15 participantIds created.
  */
 export async function generateMixSessions(
   participantIdGenerator: () => string,
@@ -675,14 +666,15 @@ export async function generateMixSessions(
 ): Promise<string[]> {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
+
   // 1. Fetch all MATH500 items grouped by cell
   const allItems = await db
-    .select({ itemId: questionBank.itemId, category: questionBank.category, question: questionBank.question })
+    .select({ itemId: questionBank.itemId, category: questionBank.category })
     .from(questionBank)
     .where(and(
       sql`${questionBank.category} != 'GSM-CHECK'`,
       eq(questionBank.version, version)
-    ));;
+    ));
 
   const cellItems: Record<string, string[]> = { TP: [], TN: [], FP: [], FN: [] };
   for (const item of allItems) {
@@ -698,75 +690,175 @@ export async function generateMixSessions(
     }
   }
 
-  // 2. For each cell, assign items to templates using constrained random algorithm
-  const templateItems: Map<string, string[]> = new Map(TEMPLATE_KEYS.map((k) => [k, []]));
+  // 2. For each category, assign 2 items to each of 15 sessions (each item in 3 sessions)
+  //    Result: sessionCategoryItems[sessionIdx][cell] = [itemId1, itemId2]
+  const sessionCategoryItems: Record<string, string[]>[] = Array.from(
+    { length: N_SESSIONS },
+    () => ({ TP: [], TN: [], FP: [], FN: [] })
+  );
 
-  for (let ci = 0; ci < CELLS.length; ci++) {
-    const cell = CELLS[ci];
-    const quotas = TEMPLATE_KEYS.map((tk) => QUOTA_MATRIX[tk][ci]);
-    const assignment = assignCellToTemplates(cellItems[cell], quotas);
-    if (!assignment) throw new Error(`Failed to assign ${cell} items to templates after retries`);
-    for (const [tk, ids] of Array.from(assignment.entries())) {
-      templateItems.get(tk)!.push(...ids);
+  for (const cell of CELLS) {
+    // 4 items per session per category, each item appears 6 times (3 as AJ + 3 as AO)
+    // 15 sessions × 4 = 60 = 10 items × 6 appearances ✓
+    const assignment = assignCategoryToSessions(cellItems[cell], N_SESSIONS, 4, 6);
+    if (!assignment) throw new Error(`Failed to assign ${cell} items to sessions after retries`);
+    for (let si = 0; si < N_SESSIONS; si++) {
+      sessionCategoryItems[si][cell] = assignment[si];
     }
   }
 
-  // 3. For each template, shuffle items and generate AO/AJ mask (8 AO, 7 AJ)
-  // Then create 2 sessions: primary (slot 0, uses mask) and mirror (slot 1, inverted mask)
+  // 3. Build each session's 16 math items with AJ-first alternating condition
+  //    AJ positions (0-indexed): 0,2,4,6,8,10,12,14 (8 slots)
+  //    AO positions: 1,3,5,7,9,11,13,15 (8 slots)
+  //    Per session: 4 categories × 2 items = 8 items assigned to AJ, 8 to AO
+  //    We shuffle all 16 items and assign AJ to even positions, AO to odd positions
   const GSM_CHECK_ID = "GSM-CHECK";
   const createdParticipantIds: string[] = [];
 
-  for (let ti = 0; ti < TEMPLATE_KEYS.length; ti++) {
-    const tk = TEMPLATE_KEYS[ti];
-    const templateId = ti + 1; // 1-based
-
-    const shuffledItems = shuffle(templateItems.get(tk)!);
-    if (shuffledItems.length !== 15) {
-      throw new Error(`Template ${tk} has ${shuffledItems.length} items, expected 15`);
+  for (let si = 0; si < N_SESSIONS; si++) {
+    // Collect all 16 math items for this session
+    const mathItems: string[] = [];
+    for (const cell of CELLS) {
+      mathItems.push(...sessionCategoryItems[si][cell]);
     }
+    if (mathItems.length !== MATH_PER_SESSION) {
+      throw new Error(`Session ${si} has ${mathItems.length} math items, expected ${MATH_PER_SESSION}`);
+    }
+    const shuffled = shuffle(mathItems);
 
-    // Generate strict alternating AO/AJ mask for 15 items:
-    //   Primary (slot 0): starts with AO → AO,AJ,AO,AJ,... → 8 AO + 7 AJ
-    //   Mirror  (slot 1): inversion of primary → starts with AJ → 8 AJ + 7 AO
-    const shuffledMask: Array<"AO" | "AJ"> = Array.from({ length: 15 }, (_, i) =>
-      i % 2 === 0 ? "AO" : "AJ"
-    );
-
-    // Primary items (slot 0): use mask as-is
-    const primaryItems: MixAssignedItem[] = shuffledItems.map((itemId, idx) => ({
+    // Assign AJ to even positions (0,2,...,14), AO to odd positions (1,3,...,15)
+    const mathAssigned: MixAssignedItem[] = shuffled.map((itemId, idx) => ({
       itemId,
-      condition: shuffledMask[idx],
+      condition: idx % 2 === 0 ? "AJ" : "AO",
     }));
 
-    // Mirror items (slot 1): invert mask
-    const mirrorItems: MixAssignedItem[] = shuffledItems.map((itemId, idx) => ({
-      itemId,
-      condition: shuffledMask[idx] === "AO" ? "AJ" : "AO",
-    }));
-
-    // Append GSM-CHECK (AJ) at the end (position 16) for both slots
-    // Slot 0: 15 math items (AO,AJ,...,AO) + GSM-CHECK(AJ) = 8 AO + 8 AJ
-    // Slot 1: 15 math items (AJ,AO,...,AJ) + GSM-CHECK(AJ) = 7 AO + 9 AJ
-    const appendGsm = (items: MixAssignedItem[]): MixAssignedItem[] => [
-      ...items,
+    // Insert GSM-CHECK at a random AJ position (even index 0,2,4,...,14)
+    // The GSM item is inserted BEFORE that position, shifting subsequent items right
+    const ajPositions = [0, 2, 4, 6, 8, 10, 12, 14];
+    const gsmInsertPos = ajPositions[Math.floor(Math.random() * ajPositions.length)];
+    const fullItems: MixAssignedItem[] = [
+      ...mathAssigned.slice(0, gsmInsertPos),
       { itemId: GSM_CHECK_ID, condition: "AJ" },
+      ...mathAssigned.slice(gsmInsertPos),
     ];
+    // fullItems has 17 items; the AJ/AO alternation is preserved for math items
+    // (GSM takes an AJ slot, math items keep their original conditions)
 
-    const primaryFull = appendGsm(primaryItems);
-    const mirrorFull = appendGsm(mirrorItems);
-
-    // Persist template record (stores primary items without GSM for reference)
+    // Persist template record (stores math items without GSM for reference)
     await db.insert(mixSessionTemplates).values({
-      templateId,
-      items: JSON.stringify(primaryItems),
+      templateId: si + 1,
+      items: JSON.stringify(mathAssigned),
     });
 
-    // Create primary session (slot 0)
-    const primaryId = participantIdGenerator();
+    // Create session
+    const participantId = participantIdGenerator();
     await db.insert(participantSessions).values({
-      participantId: primaryId,
+      participantId,
       condition: "MIX",
-      assignedItems: JSON.stringify(primaryFull),
+      assignedItems: JSON.stringify(fullItems),
+      status: "consent",
+      currentIndex: 0,
+      violationCount: 0,
+      consentGiven: false,
+      mixTemplateId: si + 1,
+      mixSlot: 0,
+    });
+    createdParticipantIds.push(participantId);
+  }
+
+  return createdParticipantIds;
+}
+
+/**
+ * Generate additional MIX sessions beyond the initial 15.
+ * Uses the same AJ-first alternating design but without strict quota constraints.
+ * Each extra session gets 16 math questions (prioritizing least-used items) + 1 GSM-CHECK.
+ * Returns the new participantIds created.
+ */
+export async function generateExtraMixSessions(
+  count: number,
+  participantIdGenerator: () => string,
+  version = "v1"
+): Promise<string[]> {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+
+  // Fetch all MATH500 items with their current counts
+  const allItems = await db
+    .select({
+      itemId: questionBank.itemId,
+      category: questionBank.category,
+      countAO: questionBank.countAO,
+      countAJ: questionBank.countAJ,
+    })
+    .from(questionBank)
+    .where(and(
+      sql`${questionBank.category} != 'GSM-CHECK'`,
+      eq(questionBank.version, version)
+    ));
+
+  const cellItems: Record<string, Array<{ itemId: string; countAO: number; countAJ: number }>> = {
+    TP: [], TN: [], FP: [], FN: [],
+  };
+  for (const item of allItems) {
+    if (item.category in cellItems) {
+      cellItems[item.category as keyof typeof cellItems].push(item);
+    }
+  }
+
+  const GSM_CHECK_ID = "GSM-CHECK";
+  const createdParticipantIds: string[] = [];
+
+  // Get current max templateId to continue numbering
+  const existingCount = await getMixSessionCount();
+
+  for (let extra = 0; extra < count; extra++) {
+    // For each category, pick 2 items with lowest total count (AO+AJ), no duplicates within session
+    const sessionItems: string[] = [];
+    for (const cell of CELLS) {
+      const sorted = [...cellItems[cell]].sort(
+        (a, b) => (a.countAO + a.countAJ) - (b.countAO + b.countAJ)
+      );
+      // Pick 2 least-used items not already in this session
+      let picked = 0;
+      for (const item of sorted) {
+        if (!sessionItems.includes(item.itemId)) {
+          sessionItems.push(item.itemId);
+          picked++;
+          if (picked === 2) break;
+        }
+      }
+    }
+
+    if (sessionItems.length !== MATH_PER_SESSION) {
+      throw new Error(`Extra session ${extra} has ${sessionItems.length} items, expected ${MATH_PER_SESSION}`);
+    }
+
+    const shuffled = shuffle(sessionItems);
+    const mathAssigned: MixAssignedItem[] = shuffled.map((itemId, idx) => ({
+      itemId,
+      condition: idx % 2 === 0 ? "AJ" : "AO",
+    }));
+
+    const ajPositions = [0, 2, 4, 6, 8, 10, 12, 14];
+    const gsmInsertPos = ajPositions[Math.floor(Math.random() * ajPositions.length)];
+    const fullItems: MixAssignedItem[] = [
+      ...mathAssigned.slice(0, gsmInsertPos),
+      { itemId: GSM_CHECK_ID, condition: "AJ" },
+      ...mathAssigned.slice(gsmInsertPos),
+    ];
+
+    const templateId = existingCount + extra + 1;
+    await db.insert(mixSessionTemplates).values({
+      templateId,
+      items: JSON.stringify(mathAssigned),
+    });
+
+    const participantId = participantIdGenerator();
+    await db.insert(participantSessions).values({
+      participantId,
+      condition: "MIX",
+      assignedItems: JSON.stringify(fullItems),
       status: "consent",
       currentIndex: 0,
       violationCount: 0,
@@ -774,22 +866,7 @@ export async function generateMixSessions(
       mixTemplateId: templateId,
       mixSlot: 0,
     });
-    createdParticipantIds.push(primaryId);
-
-    // Create mirror session (slot 1)
-    const mirrorId = participantIdGenerator();
-    await db.insert(participantSessions).values({
-      participantId: mirrorId,
-      condition: "MIX",
-      assignedItems: JSON.stringify(mirrorFull),
-      status: "consent",
-      currentIndex: 0,
-      violationCount: 0,
-      consentGiven: false,
-      mixTemplateId: templateId,
-      mixSlot: 1,
-    });
-    createdParticipantIds.push(mirrorId);
+    createdParticipantIds.push(participantId);
   }
 
   return createdParticipantIds;

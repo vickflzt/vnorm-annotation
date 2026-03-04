@@ -74,14 +74,14 @@ describe("experiment.createSession", () => {
 });
 
 describe("experiment.getSession", () => {
-  it("returns session with 16 ordered questions", async () => {
+  it("returns session with 16 ordered questions for AO/AJ", async () => {
     const caller = appRouter.createCaller(createPublicContext());
     const { participantId } = await caller.experiment.createSession({ preferredCondition: "AJ" });
     const session = await caller.experiment.getSession({ participantId });
     expect(session.questions).toHaveLength(16);
     expect(session.condition).toBe("AJ");
     expect(session.status).toBe("consent");
-    // GSM-CHECK should be at index 7
+    // GSM-CHECK should be at index 7 for AO/AJ sessions
     expect(session.questions[7]?.itemId).toBe("GSM-CHECK");
   });
 });
@@ -201,6 +201,65 @@ describe("experiment.recordViolation", () => {
 
     expect(result.terminated).toBe(false);
   });
+});
+
+describe("dashboard.generateMixSessions", () => {
+  it("generates 15 MIX sessions with 17 questions each (16 math + 1 GSM)", async () => {
+    const caller = appRouter.createCaller(createAdminContext());
+    // Reset first to ensure clean state
+    await caller.dashboard.resetMixQuota();
+
+    const result = await caller.dashboard.generateMixSessions({ force: false });
+    expect(result.success).toBe(true);
+    expect(result.count).toBe(15);
+    expect(result.participantIds).toHaveLength(15);
+
+    // Verify each session has 17 questions
+    const publicCaller = appRouter.createCaller(createPublicContext());
+    for (const pid of result.participantIds) {
+      const session = await publicCaller.experiment.getSession({ participantId: pid });
+      expect(session.questions).toHaveLength(17);
+      expect(session.condition).toBe("MIX");
+
+      // Verify exactly 1 GSM-CHECK
+      const gsmItems = session.questions.filter((q) => q.itemId === "GSM-CHECK");
+      expect(gsmItems).toHaveLength(1);
+
+      // Verify GSM-CHECK is at an AJ position (even index in the original math sequence)
+      const gsmIdx = session.questions.findIndex((q) => q.itemId === "GSM-CHECK");
+      expect(gsmIdx).toBeGreaterThanOrEqual(0);
+      expect(session.questions[gsmIdx]?.itemCondition).toBe("AJ");
+
+      // Verify no duplicate math items
+      const mathItems = session.questions
+        .filter((q) => q.itemId !== "GSM-CHECK")
+        .map((q) => q.itemId);
+      expect(new Set(mathItems).size).toBe(16);
+    }
+
+    // Verify total is 15
+    const mixStatus = await caller.dashboard.getMixStatus();
+    expect(mixStatus.total).toBe(15);
+    expect(mixStatus.available).toBe(15);
+
+    // Cleanup
+    await caller.dashboard.resetMixQuota();
+  }, 60_000);
+
+  it("all MIX sessions start with AJ (first math question is AJ)", async () => {
+    const caller = appRouter.createCaller(createAdminContext());
+    await caller.dashboard.resetMixQuota();
+    const result = await caller.dashboard.generateMixSessions({ force: false });
+
+    const publicCaller = appRouter.createCaller(createPublicContext());
+    for (const pid of result.participantIds) {
+      const session = await publicCaller.experiment.getSession({ participantId: pid });
+      // First item should be AJ (either GSM-CHECK or a math AJ item)
+      expect(session.questions[0]?.itemCondition).toBe("AJ");
+    }
+
+    await caller.dashboard.resetMixQuota();
+  }, 60_000);
 });
 
 describe("dashboard (admin only)", () => {

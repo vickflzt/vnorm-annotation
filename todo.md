@@ -115,3 +115,11 @@
 - [x] routers.ts 读取 questionVersion 并传递给查询函数
 - [x] 将三个条件（AO/AJ/MIX）的 questionVersion 设为 v3
 - [x] 用 v3 题库重新生成 16 个 MIX sessions（15/15 测试通过）
+## MIX 组重构（AJ开头 + GSM随机插入 + 动态配额）
+- [x] 重新设计配额矩阵：15套×16道数学题（8 AJ + 8 AO），满足每题每条件 3 次重复
+- [x] generateMixSessions：所有session均AJ开头（AJ,AO,AJ,AO...），GSM-CHECK随机插入任意AJ位置，每套17题
+- [x] 移除 slot 取反逻辑，mixSlot 保留但语义为 0
+- [x] 实现 generateExtraMixSessions：超出15套后可继续生成额外session（使用当前最低count的题目）
+- [x] 更新管理后台：添加“+5 额外 Session”按钮实现动态扩展
+- [x] 更新 vitest 测试覆盖新逻辑，17/17 测试通过
+- [x] 重新生成数据库中 15 个 MIX sessions，验证所有 40 题各出现 6 次（3 AJ + 3 AO）
