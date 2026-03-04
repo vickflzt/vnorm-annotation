@@ -555,7 +555,7 @@ export function QuestionPage({
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
               Question
             </span>
-            <span className="text-xs text-slate-400">{currentQuestion.itemId}</span>
+            {/* itemId hidden from participants */}
           </div>
           <div className="px-6 py-5">
             <MathRenderer content={currentQuestion.question} />
