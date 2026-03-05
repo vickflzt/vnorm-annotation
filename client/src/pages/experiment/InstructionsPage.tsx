@@ -85,9 +85,9 @@ export function InstructionsPage({ participantId, condition, onStart }: Instruct
               <div>
                 <p className="text-xs font-semibold text-blue-800">Content Shown</p>
                 <p className="text-xs text-blue-700 mt-0.5">
-                  {condition === "AO" ? "Question + Answer" : condition === "AJ" ? "Question + Answer + Justification" : "Mixed (Answer / Answer + Justification)"}
+                  Math problems
                   <br />
-                  {condition === "AO" ? "题目 + 答案" : condition === "AJ" ? "题目 + 答案 + 解释" : "混合（部分含解释）"}
+                  数学问题
                 </p>
               </div>
             </div>
