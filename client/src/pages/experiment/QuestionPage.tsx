@@ -507,9 +507,7 @@ export function QuestionPage({
                 style={{ width: `${((currentIndex + 1) / totalQuestions) * 100}%` }}
               />
             </div>
-            <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-              {condition === "AO" ? "Answer Only" : condition === "AJ" ? "Answer + Justification" : "Mixed (AO+AJ)"}
-            </span>
+            {/* condition badge hidden */}
           </div>
 
           {/* Timer — shows phase label + elapsed time (positive counter) */}
