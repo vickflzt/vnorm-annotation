@@ -131,7 +131,7 @@ for (let si = 0; si < N_SESSIONS; si++) {
   const templateId = si + 1;
   await conn.execute(
     `INSERT INTO mix_session_templates (templateId, items) VALUES (?, ?)`,
-    [templateId, JSON.stringify(mathAssigned)]
+    [templateId, JSON.stringify(fullItems)]
   );
 
   const participantId = nanoid();

@@ -744,10 +744,10 @@ export async function generateMixSessions(
     // fullItems has 17 items; the AJ/AO alternation is preserved for math items
     // (GSM takes an AJ slot, math items keep their original conditions)
 
-    // Persist template record (stores math items without GSM for reference)
+    // Persist template record (stores full items including GSM-CHECK)
     await db.insert(mixSessionTemplates).values({
       templateId: si + 1,
-      items: JSON.stringify(mathAssigned),
+      items: JSON.stringify(fullItems),
     });
 
     // Create session
@@ -851,7 +851,7 @@ export async function generateExtraMixSessions(
     const templateId = existingCount + extra + 1;
     await db.insert(mixSessionTemplates).values({
       templateId,
-      items: JSON.stringify(mathAssigned),
+      items: JSON.stringify(fullItems),
     });
 
     const participantId = participantIdGenerator();

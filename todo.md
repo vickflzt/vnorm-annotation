@@ -134,3 +134,6 @@
 - [x] figureUrl 正确转移到 FP04/FP09/FP10
 - [x] 切换 experiment_config 三个条件到 v4
 - [x] 重新生成 15 套 MIX sessions（v4题库，全部验证通过）
+## MIX 组 Bug 修复
+- [x] 修复 MIX 组第 15 题后白屏问题（mix_session_templates 存储 fullItems 而非 mathAssigned）
+- [x] 修复 GSM-CHECK 题目未出现问题（插入 GSM-CHECK v4 题库记录）
