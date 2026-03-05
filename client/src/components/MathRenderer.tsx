@@ -158,11 +158,31 @@ function tokeniseInline(src: string): Token[] {
  *   \( ... \)  →  $...$     (inline math)
  * Both may span multiple lines.
  */
+// Known block-level LaTeX environments that should be wrapped in $$ ... $$
+const BLOCK_ENVS = [
+  "align", "align*", "aligned",
+  "equation", "equation*",
+  "gather", "gather*", "gathered",
+  "multline", "multline*",
+  "flalign", "flalign*",
+  "cases", "split",
+  "array", "matrix", "pmatrix", "bmatrix", "vmatrix", "Vmatrix",
+];
+
 function normalizeLatexDelimiters(src: string): string {
   // \[ ... \]  →  $$...$$
   let out = src.replace(/\\\[([\s\S]*?)\\\]/g, (_m, inner) => `$$${inner}$$`);
   // \( ... \)  →  $...$
   out = out.replace(/\\\(([\s\S]*?)\\\)/g, (_m, inner) => `$${inner}$`);
+  // Bare \begin{env}...\end{env} (not already inside $$ or $) → $$\begin{env}...\end{env}$$
+  for (const env of BLOCK_ENVS) {
+    // Match \begin{env}...\end{env} that is NOT already preceded by $
+    const pattern = new RegExp(
+      `(?<!\\$)\\\\begin\\{${env.replace("*", "\\*")}\\}([\\s\\S]*?)\\\\end\\{${env.replace("*", "\\*")}\\}(?!\\$)`,
+      "g"
+    );
+    out = out.replace(pattern, (_m, inner) => `$$\\begin{${env}}${inner}\\end{${env}}$$`);
+  }
   return out;
 }
 
