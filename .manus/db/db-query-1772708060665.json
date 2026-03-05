@@ -1,0 +1,22 @@
+{
+  "query": "UPDATE experiment_config SET questionVersion = 'v4';\nSELECT `condition`, questionVersion FROM experiment_config;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4EMZXV1BE262rJP.02474c5205e2 --database Yac4zPy3BEzfVh9QddoaLw --execute UPDATE experiment_config SET questionVersion = 'v4';\nSELECT `condition`, questionVersion FROM experiment_config;",
+  "rows": [
+    {
+      "condition": "AO",
+      "questionVersion": "v4"
+    },
+    {
+      "condition": "AJ",
+      "questionVersion": "v4"
+    },
+    {
+      "condition": "MIX",
+      "questionVersion": "v4"
+    }
+  ],
+  "messages": [],
+  "stdout": "condition\tquestionVersion\nAO\tv4\nAJ\tv4\nMIX\tv4\n",
+  "stderr": "",
+  "execution_time_ms": 409
+}

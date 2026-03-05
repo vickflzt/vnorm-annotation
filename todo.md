@@ -127,3 +127,10 @@
 - [x] 修复 \[...\] 和 \(...\) 块级/行内公式未渲染问题（转换为 $$...$$ 和 $...$），17/17 测试通过
 ## UI 细节修复
 - [x] 隐藏被试界面题目卡片右上角的题目编号（如 FP05）
+## V4 题库生成
+- [x] 全字段对比 v3 与 v4 JSON 文件（question/response/extractedAnswer/difficulty/subject/gtIsCorrect 等）
+- [x] 确认 v3 与 v4 除 itemId/category 和 gtIsCorrect 格式外无实质差异
+- [x] 插入 v4 题库（28道从v3复制重命名 + 4道新题 FN05/TN05/TP01/TP03）
+- [x] figureUrl 正确转移到 FP04/FP09/FP10
+- [x] 切换 experiment_config 三个条件到 v4
+- [x] 重新生成 15 套 MIX sessions（v4题库，全部验证通过）
