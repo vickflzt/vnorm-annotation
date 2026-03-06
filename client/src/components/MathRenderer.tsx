@@ -220,69 +220,73 @@ function buildHtml(src: string): string {
   // Normalize \[...\] and \(...\) to $$...$$ and $...$
   src = normalizeLatexDelimiters(src);
 
-  // Pre-process: split any line that has $$...$$ mixed with surrounding text
-  // into separate virtual lines so the line-based parser can handle them.
-  // Strategy: replace occurrences of (text)($$...$$)(text) on a single line
-  // by inserting newlines around the $$ blocks.
-  const normalised = src
-    .split("\n")
-    .flatMap((line) => {
-      // If the line starts with $$ AND ends with $$ (pure block math line), leave it alone
-      // e.g. "$$\\frac{a}{b}$$" or "$$" (opening delimiter)
-      // But "$$\\frac{a}{b}$$for $x>0.$" must be split.
-      const isPureBlockLine = /^\s*\$\$/.test(line) && /\$\$\s*$/.test(line);
-      const isOpeningOnly = /^\s*\$\$\s*$/.test(line); // just "$$" alone
-      if (isPureBlockLine || isOpeningOnly) return [line];
-      // If the line contains $$ anywhere, split around it.
-      // IMPORTANT: We must skip \$$ (escaped dollar followed by $) to avoid
-      // treating the $ in \$ as part of a $$ delimiter.
-      // Strategy: find $$ that is NOT preceded by a backslash.
-      const findUnescapedDoubleDollar = (str: string, from = 0): number => {
-        let pos = from;
-        while (pos <= str.length - 2) {
-          const idx = str.indexOf("$$", pos);
-          if (idx === -1) return -1;
-          // Check if the $$ is preceded by a backslash (i.e. \$$)
-          if (idx > 0 && str[idx - 1] === "\\") {
-            pos = idx + 2; // skip this \$$ and keep searching
-            continue;
-          }
-          return idx;
-        }
-        return -1;
-      };
+  // ─── Step 1: Extract ALL $$ blocks (including multi-line ones) from the full text ───
+  // This handles cases like: "text $$\begin{pmatrix}\n1\\2\end{pmatrix}$$ more text"
+  // where the $$ block spans multiple lines and can't be found by per-line processing.
+  // Strategy: scan the full text for $$ pairs, extract them as placeholders, then
+  // re-insert them after line-based splitting.
+  const mathBlocks: string[] = [];
+  const PLACEHOLDER_PREFIX = "\x00MATHBLOCK";
+  const PLACEHOLDER_SUFFIX = "\x00";
 
-      if (findUnescapedDoubleDollar(line) !== -1) {
-        // Split the line by unescaped $$ pairs, preserving the delimiters
-        const parts: string[] = [];
-        let rest = line;
-        let searchFrom = 0;
-        while (true) {
-          const open = findUnescapedDoubleDollar(rest, searchFrom);
-          if (open === -1) break;
-          const close = findUnescapedDoubleDollar(rest, open + 2);
-          if (close === -1) break; // unclosed $$, leave as-is
-          const before = rest.slice(0, open);
-          const math = rest.slice(open, close + 2); // includes $$ delimiters
-          rest = rest.slice(close + 2);
-          searchFrom = 0; // reset for new rest string
-          if (before.trim()) parts.push(before.trimEnd());
-          parts.push(math); // pure $$...$$ line
-        }
-        if (rest.trim()) parts.push(rest.trimStart());
-        return parts.length > 0 ? parts : [line];
-      }
-      return [line];
-    })
+  // Find unescaped $$ in the full text
+  const findUnescapedDoubleDollar = (str: string, from = 0): number => {
+    let pos = from;
+    while (pos <= str.length - 2) {
+      const idx = str.indexOf("$$", pos);
+      if (idx === -1) return -1;
+      if (idx > 0 && str[idx - 1] === "\\") { pos = idx + 2; continue; }
+      return idx;
+    }
+    return -1;
+  };
+
+  // Replace all $$...$$ blocks (including multi-line) with placeholders
+  let processed = "";
+  let remaining = src;
+  while (true) {
+    const open = findUnescapedDoubleDollar(remaining);
+    if (open === -1) { processed += remaining; break; }
+    const close = findUnescapedDoubleDollar(remaining, open + 2);
+    if (close === -1) { processed += remaining; break; } // unclosed, leave as-is
+    const before = remaining.slice(0, open);
+    const mathContent = remaining.slice(open + 2, close); // content between $$
+    remaining = remaining.slice(close + 2);
+    const idx = mathBlocks.length;
+    mathBlocks.push(mathContent);
+    // Put placeholder on its own line so the line-based parser treats it as a block
+    const needsNewlineBefore = before.length > 0 && !before.endsWith("\n");
+    const needsNewlineAfter = remaining.length > 0 && !remaining.startsWith("\n");
+    processed += before;
+    if (needsNewlineBefore) processed += "\n";
+    processed += `${PLACEHOLDER_PREFIX}${idx}${PLACEHOLDER_SUFFIX}`;
+    if (needsNewlineAfter) processed += "\n";
+  }
+
+  // ─── Step 2: Line-based splitting for inline $$ mixing with text ───
+  // At this point all $$ blocks are placeholders, so no cross-line $$ issues.
+  const normalised = processed
+    .split("\n")
     .join("\n");
 
   // Split into lines for block-level processing
   const lines = normalised.split("\n");
   const segments: Array<{ kind: "blockquote" | "math-block" | "text"; content: string }> = [];
 
+  const PLACEHOLDER_RE = new RegExp(`${PLACEHOLDER_PREFIX.replace(/\x00/g, "\\x00")}(\\d+)${PLACEHOLDER_SUFFIX.replace(/\x00/g, "\\x00")}`);
+
   let i = 0;
   while (i < lines.length) {
     const line = lines[i];
+
+    // Math block placeholder (from Step 1 extraction)
+    const phMatch = line.trim().match(PLACEHOLDER_RE);
+    if (phMatch && line.trim() === phMatch[0]) {
+      const blockIdx = Number(phMatch[1]);
+      segments.push({ kind: "math-block", content: mathBlocks[blockIdx].trim() });
+      i++;
+      continue;
+    }
 
     // Blockquote line: starts with ">"
     if (/^\s*>/.test(line)) {
@@ -296,29 +300,20 @@ function buildHtml(src: string): string {
     }
 
     // Block math: line starts with $$ (possibly with leading whitespace)
+    // This handles any remaining $$ that weren't caught by Step 1 (e.g. single-line $$)
     if (/^\s*\$\$/.test(line)) {
-      // Collect until closing $$
       let mathContent = "";
       const openLine = line.replace(/^\s*\$\$/, "");
-      // Check if $$ closes on same line: $$...$$
       if (/\$\$\s*$/.test(openLine) && openLine.trim() !== "") {
         mathContent = openLine.replace(/\$\$\s*$/, "").trim();
         segments.push({ kind: "math-block", content: mathContent });
         i++;
         continue;
       }
-      // Empty openLine means opening $$ is alone on this line → multi-line block
       mathContent = openLine;
       i++;
       while (i < lines.length) {
-        // Only a line that is SOLELY $$ (with optional whitespace) ends the block.
-        // A line like "\mathbf{n} = $$" is content, not a closing delimiter.
-        if (/^\s*\$\$\s*$/.test(lines[i])) {
-          i++;
-          break;
-        }
-        // Strip any stray $$ delimiters that appear mid-line (format noise from LLM output)
-        // e.g. "   \mathbf{n} = $$" → "   \mathbf{n} = "
+        if (/^\s*\$\$\s*$/.test(lines[i])) { i++; break; }
         const cleanedLine = lines[i].replace(/\$\$/g, "");
         mathContent += "\n" + cleanedLine;
         i++;
@@ -332,8 +327,11 @@ function buildHtml(src: string): string {
     while (
       i < lines.length &&
       !/^\s*>/.test(lines[i]) &&
-      !/^\s*\$\$/.test(lines[i])
+      !/^\s*\$\$/.test(lines[i]) &&
+      !lines[i].trim().match(PLACEHOLDER_RE)
     ) {
+      // If a line contains an inline placeholder (text + placeholder), keep it as text
+      // and let renderInlineSegment handle the placeholder substitution
       textContent += lines[i] + "\n";
       i++;
     }
@@ -342,18 +340,24 @@ function buildHtml(src: string): string {
     }
   }
 
+  // Helper: restore math block placeholders in text/inline segments
+  const restorePlaceholders = (text: string): string => {
+    return text.replace(
+      new RegExp(`${PLACEHOLDER_PREFIX.replace(/\x00/g, "\\x00")}(\\d+)${PLACEHOLDER_SUFFIX.replace(/\x00/g, "\\x00")}`, "g"),
+      (_m, idx) => `$$${mathBlocks[Number(idx)]}$$`
+    );
+  };
+
   // Render segments
   let out = "";
   for (const seg of segments) {
     if (seg.kind === "math-block") {
       out += `<div class="katex-block my-4 overflow-x-auto max-w-full text-center">${renderMath(seg.content, true)}</div>`;
     } else if (seg.kind === "blockquote") {
-      // Render blockquote content (may contain inline math)
-      const inner = renderInlineSegment(seg.content);
+      const inner = renderInlineSegment(restorePlaceholders(seg.content));
       out += `<blockquote class="border-l-4 border-amber-400 bg-amber-50 pl-4 pr-3 py-2 my-3 rounded-r text-sm text-amber-900 italic">${inner}</blockquote>`;
     } else {
-      // Text segment: split into paragraphs by blank lines, then render inline math
-      const paras = seg.content.split(/\n{2,}/);
+      const paras = restorePlaceholders(seg.content).split(/\n{2,}/);
       for (const para of paras) {
         if (para.trim()) {
           out += `<p class="mb-2">${renderInlineSegment(para.trim())}</p>`;
