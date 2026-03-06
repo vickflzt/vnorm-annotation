@@ -9,6 +9,7 @@ import {
   createSession,
   generateMixSessions,
   generateExtraMixSessions,
+  getAllQuestions,
   getAllResponses,
   getAllSessions,
   getAllViolations,
@@ -402,10 +403,35 @@ const experimentRouter = router({
       return getResponsesByParticipant(input.participantId);
     }),
 });
+// ─── Preview router (public, render test only) ───────────────────────────────────
+const previewRouter = router({
+  /**
+   * Return all questions in AJ format for render testing.
+   * No authentication required. No data is collected.
+   */
+  getAllQuestions: publicProcedure
+    .input(z.object({ version: z.string().default("v1") }))
+    .query(async ({ input }) => {
+      const questions = await getAllQuestions();
+      return questions
+        .filter((q) => q.version === input.version)
+        .map((q) => ({
+          itemId: q.itemId,
+          category: q.category,
+          source: q.source,
+          question: q.question,
+          response: q.response,
+          extractedResponseAnswer: q.extractedResponseAnswer,
+          figureUrl: q.figureUrl,
+          difficultyLevel: q.difficultyLevel,
+          subject: q.subject,
+          version: q.version,
+        }));
+    }),
+});
 
-// ─── Dashboard router (admin only) ───────────────────────────────────────────
-const dashboardRouter = router({
-  getSessions: adminProcedure.query(async () => {
+// ─── Dashboard router (admin only) ─────────────────────────────────────────────
+const dashboardRouter = router({  getSessions: adminProcedure.query(async () => {
     return getAllSessions();
   }),
 
@@ -646,6 +672,7 @@ export const appRouter = router({
   }),
   experiment: experimentRouter,
   dashboard: dashboardRouter,
+  preview: previewRouter,
 });
 
 export type AppRouter = typeof appRouter;

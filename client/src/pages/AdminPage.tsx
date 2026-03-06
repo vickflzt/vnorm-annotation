@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
-  AlertTriangle, CheckCircle2, Copy, Download, ExternalLink, FlaskConical,
+  AlertTriangle, CheckCircle2, Copy, Download, ExternalLink, Eye, FlaskConical,
   Loader2, Lock, RefreshCw, RotateCcw, Settings, ShieldAlert, Trash2,
   Unlock, Users, XCircle,
 } from "lucide-react";
@@ -510,6 +510,39 @@ function ConfigTab() {
       {(!configs || configs.length === 0) && (
         <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-400 text-sm">暂无配置数据，请先通过种子脚本初始化实验配置。</div>
       )}
+
+      {/* ── Render Preview ── */}
+      <div className="bg-white rounded-2xl border border-violet-200 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+              <Eye className="w-4 h-4 text-violet-500" />
+              渲染测试组（Preview）
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">包含所有题目的 AJ 格式展示，点击下一题直接翻页，不收集任何数据。仅用于验证渲染正确性。</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <a
+              href="/preview"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-xs font-medium transition-colors"
+            >
+              <ExternalLink className="w-3.5 h-3.5" /> 打开渲染测试页
+            </a>
+            <button
+              onClick={() => { navigator.clipboard.writeText(`${origin}/preview`); toast.success("链接已复制"); }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-violet-300 text-violet-700 hover:bg-violet-50 text-xs font-medium transition-colors"
+            >
+              <Copy className="w-3.5 h-3.5" /> 复制链接
+            </button>
+          </div>
+        </div>
+        <div className="mt-3 bg-slate-50 rounded-lg px-3 py-2">
+          <code className="text-xs font-mono text-slate-600">{origin}/preview</code>
+        </div>
+        <p className="text-xs text-slate-400 mt-2">渲染测试页无需登录，任何人可访问。可按题目类型（TP/TN/FP/FN/GSM-CHECK）和版本过滤。</p>
+      </div>
 
       {/* ── MIX Session Management ── */}
       <div className="bg-white rounded-2xl border border-indigo-200 p-6">
