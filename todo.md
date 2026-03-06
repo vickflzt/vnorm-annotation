@@ -145,3 +145,6 @@
 - [x] 后端 API：releaseMixSession（清空记录+分配新 participantId，可供新被试认领）
 - [x] 后端 API：resetMixSession（清空记录+保留被试ID，被试可用原链接重新作答）
 - [x] 管理后台 UI：MIX 套题列表每行显示“重置”和“释放”按钮，带确认对话框和操作说明
+## LaTeX pmatrix 渲染错误修复
+- [x] 修复 tokeniseInline 中行内公式跨单行换行被截断的问题（仅在空行 \n\n 时才中断）
+- [x] 从 BLOCK_ENVS 移除 pmatrix/bmatrix/matrix/array 等矩阵环境，防止行内公式中的矩阵被错误升级为块级

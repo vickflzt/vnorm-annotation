@@ -112,6 +112,8 @@ function tokeniseInline(src: string): Token[] {
     if (src[i] === "$") {
       let j = i + 1;
       let found = -1;
+      // Track brace depth so we can detect \begin{...}...\end{...} inside $...$
+      // and allow single newlines (e.g. pmatrix rows separated by \\\n)
       while (j < src.length) {
         if (src[j] === "\\" && src[j + 1] === "$") {
           j += 2;
@@ -122,8 +124,9 @@ function tokeniseInline(src: string): Token[] {
           found = j;
           break;
         }
-        // Don't span blank lines
+        // Don't span blank lines (two consecutive newlines = paragraph break)
         if (src[j] === "\n" && src[j + 1] === "\n") break;
+        // Allow single newlines (e.g. inside pmatrix: \\\ followed by \n)
         j++;
       }
 
@@ -159,6 +162,10 @@ function tokeniseInline(src: string): Token[] {
  * Both may span multiple lines.
  */
 // Known block-level LaTeX environments that should be wrapped in $$ ... $$
+// NOTE: matrix-like envs (pmatrix, bmatrix, etc.) are intentionally excluded because
+// they frequently appear *inside* inline $...$ expressions and should NOT be promoted
+// to block-level $$ ... $$. The tokeniser now allows single-line newlines inside $...$
+// so pmatrix with \\\n row separators renders correctly as inline math.
 const BLOCK_ENVS = [
   "align", "align*", "aligned",
   "equation", "equation*",
@@ -166,7 +173,6 @@ const BLOCK_ENVS = [
   "multline", "multline*",
   "flalign", "flalign*",
   "cases", "split",
-  "array", "matrix", "pmatrix", "bmatrix", "vmatrix", "Vmatrix",
 ];
 
 function normalizeLatexDelimiters(src: string): string {
