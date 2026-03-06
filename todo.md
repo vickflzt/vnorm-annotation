@@ -158,3 +158,5 @@
 - [x] 后端 API：preview.getAllQuestions 公开接口，返回所有题目 AJ 数据，支持按 version 过滤
 - [x] 前端渲染测试页面 /preview：展示题目 AJ 格式，点击下一题翻页，可按类型/版本过滤，无数据收集
 - [x] 管理后台实验配置 Tab 添加渲染测试组入口卡片，支持直接打开和复制链接
+## LaTeX 渲染错误修复（第四批）
+- [x] 修复 normalizeLatexDelimiters：新增 Step A 处理 "$$\n\begin{env}...\end{env}\n$$" 格式（LLM 输出中 $$ 和 \begin{env} 分行存储），防止 Step B 重复包裹导致 $$$$ 嵌套渲染失败

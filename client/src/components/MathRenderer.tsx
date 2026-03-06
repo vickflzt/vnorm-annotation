@@ -177,35 +177,32 @@ const BLOCK_ENVS = [
 
 function normalizeLatexDelimiters(src: string): string {
   // \[ ... \]  →  $$...$$
-  // NOTE: The regex /\\\[(...)\\\]/g in JS source matches literal \[ and \] in the string.
-  // A single backslash in the string is \\, so \[ is \\[ in the string.
-  // Correct regex to match \[ is /\\\\\[/g (4 backslashes in source = 2 in regex = 1 literal \)
-  // The string coming in has LaTeX with single backslashes stored as-is (e.g. \( becomes \\( in JS).
-  // /\\\\\[/ in JS regex source = 4 backslashes = regex matches 2 literal backslashes = NO.
-  // Actually: LLM output \( is ONE backslash + (, stored in JS string as \\( (2 chars: \ and ().
-  // To match ONE backslash + ( in a JS regex literal: use /\\\(/ (3 backslashes + open paren).
-  // But /\\\(/ in JS = regex /\\\(/ = matches \ then ( = correct for \( in string.
-  // The ORIGINAL regex was correct! The bug was that \\\) also matches \ + ) greedily
-  // causing the lazy .*? to stop early at an intermediate \.
-  // Fix: use a possessive/atomic approach or exclude \\ from the inner capture.
-  // Best fix: match \( then capture everything that is NOT \) (i.e. not backslash+paren)
-  // Use: /\\\(((?:[^\\]|\\[^)])*?)\\\)/g
   let out = src.replace(/\\\[((?:[^\\]|\\[^\]])*?)\\\]/g, (_m, inner) => `$$${inner}$$`);
   out = out.replace(/\\\(((?:[^\\]|\\[^)])*?)\\\)/g, (_m, inner) => `$${inner}$`);
-  // Bare \begin{env}...\end{env} (not already inside $$ or $) → $$\begin{env}...\end{env}$$
-  // IMPORTANT: only capture up to \end{env} — do NOT swallow trailing non-math content
-  // (e.g. "#### 2.0" that follows \end{align*} on the same line must be excluded)
+
+  // Step A: Normalize "$$\n\begin{env}...\end{env}\n$$" → "$$\begin{env}...\end{env}$$"
+  // This handles LLM outputs where $$ and \begin{env} are on separate lines.
+  // Without this, the BLOCK_ENVS loop below would double-wrap the environment.
   for (const env of BLOCK_ENVS) {
     const escapedEnv = env.replace("*", "\\*");
-    // Match \begin{env}..\end{env} not already preceded by $
-    // Then check if there's trailing non-whitespace on the same token — if so, split it out
+    // Match: $$ (optional whitespace/newline) \begin{env} ... \end{env} (optional whitespace/newline) $$
+    const alreadyWrapped = new RegExp(
+      `\\$\\$\\s*\\\\begin\\{${escapedEnv}\\}([\\s\\S]*?)\\\\end\\{${escapedEnv}\\}\\s*\\$\\$`,
+      "g"
+    );
+    out = out.replace(alreadyWrapped, (_m, inner) => `$$\\begin{${env}}${inner}\\end{${env}}$$`);
+  }
+
+  // Step B: Bare \begin{env}...\end{env} (not already inside $$ or $) → $$\begin{env}...\end{env}$$
+  // IMPORTANT: only capture up to \end{env} — do NOT swallow trailing non-math content
+  for (const env of BLOCK_ENVS) {
+    const escapedEnv = env.replace("*", "\\*");
     const pattern = new RegExp(
       `(?<!\\$)\\\\begin\\{${escapedEnv}\\}([\\s\\S]*?)\\\\end\\{${escapedEnv}\\}([^\n]*)`,
       "g"
     );
     out = out.replace(pattern, (_m, inner, trailing) => {
       const mathBlock = `$$\\begin{${env}}${inner}\\end{${env}}$$`;
-      // If there's trailing content on the same line (e.g. "#### 2.0"), put it on a new line
       const trailingTrimmed = trailing.trimStart();
       if (trailingTrimmed) {
         return `${mathBlock}\n${trailingTrimmed}`;
