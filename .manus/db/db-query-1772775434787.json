@@ -1,0 +1,40 @@
+{
+  "query": "SELECT itemId, version, HEX(extractedResponseAnswer) as hex_val, extractedResponseAnswer FROM question_bank WHERE extractedResponseAnswer LIKE '%\\\\(%' LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4EMZXV1BE262rJP.02474c5205e2 --database Yac4zPy3BEzfVh9QddoaLw --execute SELECT itemId, version, HEX(extractedResponseAnswer) as hex_val, extractedResponseAnswer FROM question_bank WHERE extractedResponseAnswer LIKE '%\\\\(%' LIMIT 5;",
+  "rows": [
+    {
+      "itemId": "TN07",
+      "version": "v1",
+      "hex_val": "31312831202B205C737172747B357D29",
+      "extractedResponseAnswer": "11(1 + \\sqrt{5})"
+    },
+    {
+      "itemId": "FP09",
+      "version": "v1",
+      "hex_val": "5C746578747B2845297D",
+      "extractedResponseAnswer": "\\text{(E)}"
+    },
+    {
+      "itemId": "FP02",
+      "version": "v2",
+      "hex_val": "28612C206229203D2028322C202D3329",
+      "extractedResponseAnswer": "(a, b) = (2, -3)"
+    },
+    {
+      "itemId": "FP09",
+      "version": "v2",
+      "hex_val": "5C746578747B2845297D",
+      "extractedResponseAnswer": "\\text{(E)}"
+    },
+    {
+      "itemId": "FP02",
+      "version": "v3",
+      "hex_val": "28612C206229203D2028322C202D3329",
+      "extractedResponseAnswer": "(a, b) = (2, -3)"
+    }
+  ],
+  "messages": [],
+  "stdout": "itemId\tversion\thex_val\textractedResponseAnswer\nTN07\tv1\t31312831202B205C737172747B357D29\t11(1 + \\sqrt{5})\nFP09\tv1\t5C746578747B2845297D\t\\text{(E)}\nFP02\tv2\t28612C206229203D2028322C202D3329\t(a, b) = (2, -3)\nFP09\tv2\t5C746578747B2845297D\t\\text{(E)}\nFP02\tv3\t28612C206229203D2028322C202D3329\t(a, b) = (2, -3)\n",
+  "stderr": "",
+  "execution_time_ms": 422
+}

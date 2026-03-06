@@ -160,3 +160,5 @@
 - [x] 管理后台实验配置 Tab 添加渲染测试组入口卡片，支持直接打开和复制链接
 ## LaTeX 渲染错误修复（第四批）
 - [x] 修复 normalizeLatexDelimiters：新增 Step A 处理 "$$\n\begin{env}...\end{env}\n$$" 格式（LLM 输出中 $$ 和 \begin{env} 分行存储），防止 Step B 重复包裹导致 $$$$ 嵌套渲染失败
+## LaTeX 渲染错误修复（第五批）
+- [x] 修复 isMathOnly 模式：先经过 normalizeLatexDelimiters 转换 \( \) 和 \[ \]，再判断是否含 $，解决 extractedResponseAnswer 字段 \([-2, 7]\) 未渲染的问题

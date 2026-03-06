@@ -1,0 +1,35 @@
+{
+  "query": "SELECT itemId, version, extractedResponseAnswer FROM question_bank WHERE extractedResponseAnswer LIKE '%\\\\(%' LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4EMZXV1BE262rJP.02474c5205e2 --database Yac4zPy3BEzfVh9QddoaLw --execute SELECT itemId, version, extractedResponseAnswer FROM question_bank WHERE extractedResponseAnswer LIKE '%\\\\(%' LIMIT 5;",
+  "rows": [
+    {
+      "itemId": "TN07",
+      "version": "v1",
+      "extractedResponseAnswer": "11(1 + \\sqrt{5})"
+    },
+    {
+      "itemId": "FP09",
+      "version": "v1",
+      "extractedResponseAnswer": "\\text{(E)}"
+    },
+    {
+      "itemId": "FP02",
+      "version": "v2",
+      "extractedResponseAnswer": "(a, b) = (2, -3)"
+    },
+    {
+      "itemId": "FP09",
+      "version": "v2",
+      "extractedResponseAnswer": "\\text{(E)}"
+    },
+    {
+      "itemId": "FP02",
+      "version": "v3",
+      "extractedResponseAnswer": "(a, b) = (2, -3)"
+    }
+  ],
+  "messages": [],
+  "stdout": "itemId\tversion\textractedResponseAnswer\nTN07\tv1\t11(1 + \\sqrt{5})\nFP09\tv1\t\\text{(E)}\nFP02\tv2\t(a, b) = (2, -3)\nFP09\tv2\t\\text{(E)}\nFP02\tv3\t(a, b) = (2, -3)\n",
+  "stderr": "",
+  "execution_time_ms": 353
+}

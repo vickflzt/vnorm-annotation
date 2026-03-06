@@ -1,0 +1,15 @@
+{
+  "query": "SELECT itemId, version, extractedResponseAnswer FROM question_bank WHERE extractedResponseAnswer LIKE '%\\\\\\\\(%' LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4EMZXV1BE262rJP.02474c5205e2 --database Yac4zPy3BEzfVh9QddoaLw --execute SELECT itemId, version, extractedResponseAnswer FROM question_bank WHERE extractedResponseAnswer LIKE '%\\\\\\\\(%' LIMIT 10;",
+  "rows": [
+    {
+      "itemId": "FN05",
+      "version": "v4",
+      "extractedResponseAnswer": "\\([-2, 7]\\)"
+    }
+  ],
+  "messages": [],
+  "stdout": "itemId\tversion\textractedResponseAnswer\nFN05\tv4\t\\([-2, 7]\\)\n",
+  "stderr": "",
+  "execution_time_ms": 362
+}

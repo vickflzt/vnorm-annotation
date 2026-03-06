@@ -393,7 +393,8 @@ export function MathRenderer({ content, className = "", isMathOnly = false }: Ma
     if (!content) return "";
 
     if (isMathOnly) {
-      const trimmed = content.trim();
+      // Always normalize \( \) and \[ \] first, even if no $ present
+      const trimmed = normalizeLatexDelimiters(content.trim());
       if (trimmed.includes("$")) {
         return buildHtml(trimmed);
       }
