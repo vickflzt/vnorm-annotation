@@ -139,3 +139,5 @@
 - [x] 修复 GSM-CHECK 题目未出现问题（插入 GSM-CHECK v4 题库记录）
 ## MathRenderer 裸 LaTeX 环境修复
 - [x] 修复 \begin{align*}...\end{align*} 等裸 LaTeX 环境未渲染问题（在 normalizeLatexDelimiters 中自动包裹为 $$...$$）
+## GSM-CHECK 注意力检测逻辑修复
+- [x] 修复 GSM-CHECK 通过判断逻辑：选 false（AI 回答错误）才算通过，而非选 true

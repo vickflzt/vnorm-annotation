@@ -303,9 +303,11 @@ const experimentRouter = router({
       const isLast = nextIndex >= assignedItems.length;
 
       // Check attention check
+      // GSM-CHECK: the AI response is WRONG, so the correct answer is false ("AI is incorrect").
+      // A participant passes the attention check by selecting false (responseCorrect === false).
       let passedAttentionCheck = session.passedAttentionCheck;
       if (input.category === "GSM-CHECK") {
-        passedAttentionCheck = input.responseCorrect === true;
+        passedAttentionCheck = input.responseCorrect === false;
       }
 
       if (isLast) {
