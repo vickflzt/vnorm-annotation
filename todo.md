@@ -141,3 +141,7 @@
 - [x] 修复 \begin{align*}...\end{align*} 等裸 LaTeX 环境未渲染问题（在 normalizeLatexDelimiters 中自动包裹为 $$...$$）
 ## GSM-CHECK 注意力检测逻辑修复
 - [x] 修复 GSM-CHECK 通过判断逻辑：选 false（AI 回答错误）才算通过，而非选 true
+## MIX 套题单独管理功能
+- [x] 后端 API：releaseMixSession（清空记录+分配新 participantId，可供新被试认领）
+- [x] 后端 API：resetMixSession（清空记录+保留被试ID，被试可用原链接重新作答）
+- [x] 管理后台 UI：MIX 套题列表每行显示“重置”和“释放”按钮，带确认对话框和操作说明

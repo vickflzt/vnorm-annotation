@@ -376,6 +376,31 @@ function ConfigTab() {
   });
   const [showMixForceConfirm, setShowMixForceConfirm] = useState(false);
 
+  // Single-session release/reset
+  const [sessionActionTarget, setSessionActionTarget] = useState<{ participantId: string; action: "release" | "reset" } | null>(null);
+  const releaseMixSessionMut = trpc.dashboard.releaseMixSession.useMutation({
+    onSuccess: (data) => {
+      toast.success(`套题已释放，新 ID: ${data.newParticipantId.slice(0, 8)}…`);
+      refetchMix();
+      refetch();
+      utils.dashboard.getSessions.invalidate();
+      utils.dashboard.getItemCoverage.invalidate();
+      setSessionActionTarget(null);
+    },
+    onError: (e) => { toast.error(`释放失败: ${e.message}`); setSessionActionTarget(null); },
+  });
+  const resetMixSessionMut = trpc.dashboard.resetMixSession.useMutation({
+    onSuccess: () => {
+      toast.success("套题已重置，被试可重新作答");
+      refetchMix();
+      refetch();
+      utils.dashboard.getSessions.invalidate();
+      utils.dashboard.getItemCoverage.invalidate();
+      setSessionActionTarget(null);
+    },
+    onError: (e) => { toast.error(`重置失败: ${e.message}`); setSessionActionTarget(null); },
+  });
+
   const [editingQuota, setEditingQuota] = useState<{ AO?: number; AJ?: number; MIX?: number }>({});
 
   if (isLoading) return <LoadingSpinner />;
@@ -524,9 +549,9 @@ function ConfigTab() {
                 <tr className="border-b border-slate-200">
                   <th className="text-left py-1.5 px-2 text-slate-500 font-medium">被试ID</th>
                   <th className="text-left py-1.5 px-2 text-slate-500 font-medium">模板</th>
-                  <th className="text-left py-1.5 px-2 text-slate-500 font-medium">Session #</th>
                   <th className="text-left py-1.5 px-2 text-slate-500 font-medium">被试编号</th>
                   <th className="text-left py-1.5 px-2 text-slate-500 font-medium">状态</th>
+                  <th className="text-left py-1.5 px-2 text-slate-500 font-medium">操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -534,11 +559,27 @@ function ConfigTab() {
                   <tr key={s.participantId} className="border-b border-slate-100 hover:bg-slate-50">
                     <td className="py-1.5 px-2 font-mono text-slate-600">{s.participantId.slice(0, 8)}…</td>
                     <td className="py-1.5 px-2 text-slate-500">T{s.mixTemplateId}</td>
-                    <td className="py-1.5 px-2 text-slate-500">{s.mixTemplateId}</td>
-                    {/* Session # column intentionally shows templateId as sequential number */}
                     <td className="py-1.5 px-2 text-slate-500">{s.participantCode ?? <span className="text-slate-300">未开始</span>}</td>
                     <td className="py-1.5 px-2">
                       <StatusBadge status={s.status} />
+                    </td>
+                    <td className="py-1.5 px-2">
+                      <div className="flex gap-1">
+                        <button
+                          title="重置：清空答题记录，保留被试ID，被试可用原链接重新作答"
+                          onClick={() => setSessionActionTarget({ participantId: s.participantId, action: "reset" })}
+                          className="px-1.5 py-0.5 rounded text-amber-600 border border-amber-300 hover:bg-amber-50 text-[10px] font-medium"
+                        >
+                          重置
+                        </button>
+                        <button
+                          title="释放：清空答题记录，分配新被试ID，原链接失效，可供新被试认领"
+                          onClick={() => setSessionActionTarget({ participantId: s.participantId, action: "release" })}
+                          className="px-1.5 py-0.5 rounded text-red-600 border border-red-300 hover:bg-red-50 text-[10px] font-medium"
+                        >
+                          释放
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -546,6 +587,51 @@ function ConfigTab() {
             </table>
           </div>
         )}
+
+        {/* Single-session action confirm dialog */}
+        <AlertDialog open={!!sessionActionTarget} onOpenChange={(open) => { if (!open) setSessionActionTarget(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {sessionActionTarget?.action === "reset" ? "确认重置该套题？" : "确认释放该套题？"}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {sessionActionTarget?.action === "reset" ? (
+                  <>
+                    将清空该套题的所有答题记录和违规记录，并将已计入的题目计数减回。<br />
+                    <strong>被试 ID 保持不变，被试可用原链接重新开始作答。</strong><br /><br />
+                    被试ID: <code className="bg-slate-100 px-1 rounded">{sessionActionTarget?.participantId}</code>
+                  </>
+                ) : (
+                  <>
+                    将清空该套题的所有答题记录和违规记录，并将已计入的题目计数减回。<br />
+                    <strong>系统将分配新的被试 ID，原链接失效，该套题可供新被试认领。</strong><br /><br />
+                    被试ID: <code className="bg-slate-100 px-1 rounded">{sessionActionTarget?.participantId}</code>
+                  </>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>取消</AlertDialogCancel>
+              <AlertDialogAction
+                className={sessionActionTarget?.action === "reset" ? "bg-amber-500 hover:bg-amber-600" : "bg-red-600 hover:bg-red-700"}
+                onClick={() => {
+                  if (!sessionActionTarget) return;
+                  if (sessionActionTarget.action === "reset") {
+                    resetMixSessionMut.mutate({ participantId: sessionActionTarget.participantId });
+                  } else {
+                    releaseMixSessionMut.mutate({ participantId: sessionActionTarget.participantId });
+                  }
+                }}
+              >
+                {(releaseMixSessionMut.isPending || resetMixSessionMut.isPending)
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                  : null}
+                {sessionActionTarget?.action === "reset" ? "确认重置" : "确认释放"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Action buttons */}
         <div className="flex flex-wrap gap-3">

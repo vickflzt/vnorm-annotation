@@ -27,6 +27,8 @@ import {
   incrementQuestionCount,
   resetAllQuota,
   resetMixQuota,
+  releaseMixSession,
+  resetMixSession,
   releaseParticipantQuota,
   saveItemResponse,
   saveParticipantCode,
@@ -605,6 +607,30 @@ const dashboardRouter = router({
     await resetMixQuota();
     return { success: true };
   }),
+
+  /**
+   * Release a single MIX session:
+   * Clears responses/violations, decrements answered item counts,
+   * assigns a new participantId so the slot can be re-claimed by a new participant.
+   */
+  releaseMixSession: adminProcedure
+    .input(z.object({ participantId: z.string() }))
+    .mutation(async ({ input }) => {
+      const newId = await releaseMixSession(input.participantId);
+      return { success: true, newParticipantId: newId };
+    }),
+
+  /**
+   * Reset a single MIX session in-place:
+   * Clears responses/violations, decrements answered item counts,
+   * restores session to initial state while keeping the same participantId.
+   */
+  resetMixSession: adminProcedure
+    .input(z.object({ participantId: z.string() }))
+    .mutation(async ({ input }) => {
+      await resetMixSession(input.participantId);
+      return { success: true };
+    }),
 });
 
 // ─── App router ───────────────────────────────────────────────────────────────

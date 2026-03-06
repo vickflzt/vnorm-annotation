@@ -894,6 +894,127 @@ export async function getMixSessions() {
     .orderBy(asc(participantSessions.mixTemplateId), asc(participantSessions.mixSlot));
 }
 
+/**
+ * Release a single MIX session:
+ * - Decrements countAO/countAJ for all items that were actually answered (based on item_responses)
+ * - Deletes all responses and violations for this participant
+ * - Resets the session to its initial state (status=consent, startedAt=null, currentIndex=0, etc.)
+ * - Generates a new participantId so the slot can be re-claimed by a new participant
+ * Returns the new participantId.
+ */
+export async function releaseMixSession(participantId: string): Promise<string> {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+
+  const sessions = await db
+    .select()
+    .from(participantSessions)
+    .where(and(eq(participantSessions.participantId, participantId), eq(participantSessions.condition, "MIX")))
+    .limit(1);
+  if (sessions.length === 0) throw new Error("MIX session not found");
+  const session = sessions[0];
+
+  // Decrement counts only for items that were actually answered
+  const responses = await db
+    .select({ itemId: itemResponses.itemId, condition: itemResponses.condition })
+    .from(itemResponses)
+    .where(eq(itemResponses.participantId, participantId));
+
+  for (const r of responses) {
+    if (r.itemId === "GSM-CHECK") continue;
+    if (r.condition === "AO") {
+      await db.update(questionBank)
+        .set({ countAO: sql`GREATEST(0, ${questionBank.countAO} - 1)` })
+        .where(eq(questionBank.itemId, r.itemId));
+    } else {
+      await db.update(questionBank)
+        .set({ countAJ: sql`GREATEST(0, ${questionBank.countAJ} - 1)` })
+        .where(eq(questionBank.itemId, r.itemId));
+    }
+  }
+
+  // Delete responses and violations
+  await db.delete(itemResponses).where(eq(itemResponses.participantId, participantId));
+  await db.delete(violationEvents).where(eq(violationEvents.participantId, participantId));
+
+  // Generate new participantId and reset session to initial state
+  const { nanoid } = await import("nanoid");
+  const newParticipantId = nanoid(12);
+  await db.update(participantSessions)
+    .set({
+      participantId: newParticipantId,
+      status: "consent",
+      currentIndex: 0,
+      violationCount: 0,
+      consentGiven: false,
+      startedAt: null,
+      completedAt: null,
+      totalTimeSeconds: null,
+      passedAttentionCheck: null,
+      participantCode: null,
+    })
+    .where(eq(participantSessions.participantId, participantId));
+
+  return newParticipantId;
+}
+
+/**
+ * Reset a single MIX session in-place (keeps the same participantId):
+ * - Decrements countAO/countAJ for all items that were actually answered
+ * - Deletes all responses and violations for this participant
+ * - Resets session fields to initial state (status=consent, startedAt=null, currentIndex=0, etc.)
+ * - The participantId remains unchanged so the same link can be reused
+ */
+export async function resetMixSession(participantId: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+
+  const sessions = await db
+    .select()
+    .from(participantSessions)
+    .where(and(eq(participantSessions.participantId, participantId), eq(participantSessions.condition, "MIX")))
+    .limit(1);
+  if (sessions.length === 0) throw new Error("MIX session not found");
+
+  // Decrement counts only for items that were actually answered
+  const responses = await db
+    .select({ itemId: itemResponses.itemId, condition: itemResponses.condition })
+    .from(itemResponses)
+    .where(eq(itemResponses.participantId, participantId));
+
+  for (const r of responses) {
+    if (r.itemId === "GSM-CHECK") continue;
+    if (r.condition === "AO") {
+      await db.update(questionBank)
+        .set({ countAO: sql`GREATEST(0, ${questionBank.countAO} - 1)` })
+        .where(eq(questionBank.itemId, r.itemId));
+    } else {
+      await db.update(questionBank)
+        .set({ countAJ: sql`GREATEST(0, ${questionBank.countAJ} - 1)` })
+        .where(eq(questionBank.itemId, r.itemId));
+    }
+  }
+
+  // Delete responses and violations
+  await db.delete(itemResponses).where(eq(itemResponses.participantId, participantId));
+  await db.delete(violationEvents).where(eq(violationEvents.participantId, participantId));
+
+  // Reset session to initial state (keep participantId and assignedItems unchanged)
+  await db.update(participantSessions)
+    .set({
+      status: "consent",
+      currentIndex: 0,
+      violationCount: 0,
+      consentGiven: false,
+      startedAt: null,
+      completedAt: null,
+      totalTimeSeconds: null,
+      passedAttentionCheck: null,
+      participantCode: null,
+    })
+    .where(eq(participantSessions.participantId, participantId));
+}
+
 /** Reset only MIX sessions: delete MIX sessions, responses, templates; reset countAO/countAJ for MIX items */
 export async function resetMixQuota() {
   const db = await getDb();
