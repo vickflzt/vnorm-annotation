@@ -1,0 +1,22 @@
+{
+  "query": "SELECT column_name FROM information_schema.columns WHERE table_name = 'mix_session_templates' ORDER BY ordinal_position;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4EMZXV1BE262rJP.02474c5205e2 --database Yac4zPy3BEzfVh9QddoaLw --execute SELECT column_name FROM information_schema.columns WHERE table_name = 'mix_session_templates' ORDER BY ordinal_position;",
+  "rows": [
+    {
+      "column_name": "id"
+    },
+    {
+      "column_name": "templateId"
+    },
+    {
+      "column_name": "items"
+    },
+    {
+      "column_name": "generatedAt"
+    }
+  ],
+  "messages": [],
+  "stdout": "column_name\nid\ntemplateId\nitems\ngeneratedAt\n",
+  "stderr": "",
+  "execution_time_ms": 356
+}

@@ -771,8 +771,22 @@ export async function generateMixSessions(
 
 /**
  * Generate additional MIX sessions beyond the initial 15.
- * Uses the same AJ-first alternating design but without strict quota constraints.
- * Each extra session gets 16 math questions (prioritizing least-used items) + 1 GSM-CHECK.
+ *
+ * Design: balance-repair mode (Plan A).
+ * - Reads actual per-item AO/AJ counts from ALL existing mix_session_templates.
+ * - Per session: 4 items per category → 2 go to AJ slots, 2 go to AO slots.
+ *   Selection priority: highest deficit (TARGET=3 minus current count) first;
+ *   tie-break by lowest current count in that condition.
+ *   Each item appears at most once per session.
+ * - After each generated session, in-memory counts are updated so the next session
+ *   in the same batch also benefits from the repair logic.
+ * - Math items interleave AJ-first (AJ,AO,AJ,AO,...); GSM-CHECK inserted at a
+ *   random AJ position as an extra item (does not displace math items).
+ *
+ * Based on the initial 15-session imbalance, generating ~3 extra sessions is
+ * sufficient to bring every item's AO and AJ count to at least 3.
+ * Total appearances per item will exceed 6 (typically 6-9), which is acceptable.
+ *
  * Returns the new participantIds created.
  */
 export async function generateExtraMixSessions(
@@ -783,13 +797,11 @@ export async function generateExtraMixSessions(
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
 
-  // Fetch all MATH500 items with their current counts
+  // 1. Fetch all MATH500 items for the given version
   const allItems = await db
     .select({
       itemId: questionBank.itemId,
       category: questionBank.category,
-      countAO: questionBank.countAO,
-      countAJ: questionBank.countAJ,
     })
     .from(questionBank)
     .where(and(
@@ -797,54 +809,110 @@ export async function generateExtraMixSessions(
       eq(questionBank.version, version)
     ));
 
-  const cellItems: Record<string, Array<{ itemId: string; countAO: number; countAJ: number }>> = {
-    TP: [], TN: [], FP: [], FN: [],
-  };
+  // 2. Compute actual per-item AO/AJ counts from existing mix_session_templates
+  const allTemplates = await db
+    .select({ items: mixSessionTemplates.items })
+    .from(mixSessionTemplates);
+
+  // In-memory mutable counts (updated after each generated session in this batch)
+  const aoCount = new Map<string, number>();
+  const ajCount = new Map<string, number>();
   for (const item of allItems) {
-    if (item.category in cellItems) {
-      cellItems[item.category as keyof typeof cellItems].push(item);
+    aoCount.set(item.itemId, 0);
+    ajCount.set(item.itemId, 0);
+  }
+  for (const tpl of allTemplates) {
+    const items: MixAssignedItem[] = JSON.parse(tpl.items as string);
+    for (const it of items) {
+      if (it.itemId === "GSM-CHECK") continue;
+      if (it.condition === "AO") aoCount.set(it.itemId, (aoCount.get(it.itemId) ?? 0) + 1);
+      else ajCount.set(it.itemId, (ajCount.get(it.itemId) ?? 0) + 1);
     }
   }
 
+  // Group items by category
+  const cellItems: Record<string, string[]> = { TP: [], TN: [], FP: [], FN: [] };
+  for (const item of allItems) {
+    if (item.category in cellItems) cellItems[item.category].push(item.itemId);
+  }
+
+  const TARGET = 3; // desired count per condition per item
   const GSM_CHECK_ID = "GSM-CHECK";
   const createdParticipantIds: string[] = [];
 
-  // Get current max templateId to continue numbering (use max templateId from mix_session_templates,
-  // NOT getMixSessionCount which counts participant_sessions rows and may be inflated by release/reset ops)
+  // Get current max templateId
   const maxTemplateRows = await db
     .select({ maxId: sql<number>`MAX(${mixSessionTemplates.templateId})` })
     .from(mixSessionTemplates);
   const maxExistingTemplateId = maxTemplateRows[0]?.maxId ?? 0;
 
   for (let extra = 0; extra < count; extra++) {
-    // For each category, pick 4 items with lowest total count (AO+AJ), no duplicates within session
-    // 4 categories × 4 items = 16 math items per session (MATH_PER_SESSION)
-    const sessionItems: string[] = [];
+    // Per session: collect 4 items per category, split 2 for AJ slots and 2 for AO slots.
+    // Priority: items with the largest deficit (TARGET - currentCount) go first.
+    const sessionAJ: string[] = []; // items assigned to AJ in this session
+    const sessionAO: string[] = []; // items assigned to AO in this session
+    const usedInSession = new Set<string>();
+
     for (const cell of CELLS) {
-      const sorted = [...cellItems[cell]].sort(
-        (a, b) => (a.countAO + a.countAJ) - (b.countAO + b.countAJ)
-      );
-      // Pick 4 least-used items not already in this session
-      let picked = 0;
-      for (const item of sorted) {
-        if (!sessionItems.includes(item.itemId)) {
-          sessionItems.push(item.itemId);
-          picked++;
-          if (picked === 4) break;
+      const items = cellItems[cell];
+
+      // Score function: higher score = more urgent to appear in this condition
+      // deficit = TARGET - count; items already at or above target get score 0 (still eligible)
+      const scoreAJ = (id: string) => Math.max(0, TARGET - (ajCount.get(id) ?? 0));
+      const scoreAO = (id: string) => Math.max(0, TARGET - (aoCount.get(id) ?? 0));
+      const totalCount = (id: string) => (aoCount.get(id) ?? 0) + (ajCount.get(id) ?? 0);
+
+      // Pick 2 items for AJ slots: prefer AJ-deficit items, then least total
+      const ajCandidates = [...items]
+        .filter(id => !usedInSession.has(id))
+        .sort((a, b) => {
+          const sd = scoreAJ(b) - scoreAJ(a); // higher deficit first
+          if (sd !== 0) return sd;
+          return totalCount(a) - totalCount(b); // then least total
+        });
+      for (const id of ajCandidates) {
+        if (sessionAJ.filter(i => cellItems[cell].includes(i)).length >= 2) break;
+        if (!usedInSession.has(id)) {
+          sessionAJ.push(id);
+          usedInSession.add(id);
+        }
+      }
+
+      // Pick 2 items for AO slots: prefer AO-deficit items, then least total
+      const aoCandidates = [...items]
+        .filter(id => !usedInSession.has(id))
+        .sort((a, b) => {
+          const sd = scoreAO(b) - scoreAO(a);
+          if (sd !== 0) return sd;
+          return totalCount(a) - totalCount(b);
+        });
+      for (const id of aoCandidates) {
+        if (sessionAO.filter(i => cellItems[cell].includes(i)).length >= 2) break;
+        if (!usedInSession.has(id)) {
+          sessionAO.push(id);
+          usedInSession.add(id);
         }
       }
     }
 
-    if (sessionItems.length !== MATH_PER_SESSION) {
-      throw new Error(`Extra session ${extra} has ${sessionItems.length} items, expected ${MATH_PER_SESSION}`);
+    // Validate: 8 AJ + 8 AO = 16 math items
+    if (sessionAJ.length !== 8 || sessionAO.length !== 8) {
+      throw new Error(
+        `Extra session ${extra}: AJ=${sessionAJ.length} AO=${sessionAO.length}, expected 8+8`
+      );
     }
 
-    const shuffled = shuffle(sessionItems);
-    const mathAssigned: MixAssignedItem[] = shuffled.map((itemId, idx) => ({
-      itemId,
-      condition: idx % 2 === 0 ? "AJ" : "AO",
-    }));
+    // Shuffle within each group, then interleave AJ-first: AJ,AO,AJ,AO,...
+    const shuffledAJ = shuffle(sessionAJ);
+    const shuffledAO = shuffle(sessionAO);
+    const mathAssigned: MixAssignedItem[] = [];
+    for (let i = 0; i < 8; i++) {
+      mathAssigned.push({ itemId: shuffledAJ[i], condition: "AJ" });
+      mathAssigned.push({ itemId: shuffledAO[i], condition: "AO" });
+    }
+    // mathAssigned is now 16 items: AJ at even positions, AO at odd positions
 
+    // Insert GSM-CHECK at a random AJ position (even index 0,2,...,14)
     const ajPositions = [0, 2, 4, 6, 8, 10, 12, 14];
     const gsmInsertPos = ajPositions[Math.floor(Math.random() * ajPositions.length)];
     const fullItems: MixAssignedItem[] = [
@@ -852,6 +920,12 @@ export async function generateExtraMixSessions(
       { itemId: GSM_CHECK_ID, condition: "AJ" },
       ...mathAssigned.slice(gsmInsertPos),
     ];
+
+    // Update in-memory counts for subsequent sessions in this batch
+    for (const it of mathAssigned) {
+      if (it.condition === "AO") aoCount.set(it.itemId, (aoCount.get(it.itemId) ?? 0) + 1);
+      else ajCount.set(it.itemId, (ajCount.get(it.itemId) ?? 0) + 1);
+    }
 
     const templateId = maxExistingTemplateId + extra + 1;
     await db.insert(mixSessionTemplates).values({

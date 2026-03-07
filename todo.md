@@ -166,3 +166,5 @@
 - [x] 确认第15套题数据完全正常，所有 slot 已被认领是正常行为
 - [x] 修复 generateExtraMixSessions：每个 category 选 4 道题（而非 2 道），4×4=16 符合 MATH_PER_SESSION
 - [x] 修复 generateExtraMixSessions： templateId 改用 MAX(templateId)+1（而非 getMixSessionCount），防止释放/重置后主键冲突
+## generateExtraMixSessions 优先补偿逻辑
+- [x] 修改 generateExtraMixSessions：从 mix_session_templates 统计每题实际 AO/AJ 出现次数，优先选择 AO 不足的题填 AO 槽、AJ 不足的题填 AJ 槽，以尽快使每题达到 3 AO + 3 AJ；模拟验证只需额外 3 套即可达标；数学题交替顺序全部通过验证
