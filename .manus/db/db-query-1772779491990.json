@@ -1,0 +1,28 @@
+{
+  "query": "SELECT `condition`, questionVersion, isOpen, targetParticipants FROM experiment_config;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4EMZXV1BE262rJP.02474c5205e2 --database Yac4zPy3BEzfVh9QddoaLw --execute SELECT `condition`, questionVersion, isOpen, targetParticipants FROM experiment_config;",
+  "rows": [
+    {
+      "condition": "AO",
+      "questionVersion": "v4",
+      "isOpen": "1",
+      "targetParticipants": "8"
+    },
+    {
+      "condition": "AJ",
+      "questionVersion": "v4",
+      "isOpen": "1",
+      "targetParticipants": "8"
+    },
+    {
+      "condition": "MIX",
+      "questionVersion": "v4",
+      "isOpen": "1",
+      "targetParticipants": "16"
+    }
+  ],
+  "messages": [],
+  "stdout": "condition\tquestionVersion\tisOpen\ttargetParticipants\nAO\tv4\t1\t8\nAJ\tv4\t1\t8\nMIX\tv4\t1\t16\n",
+  "stderr": "",
+  "execution_time_ms": 375
+}

@@ -1,0 +1,115 @@
+{
+  "query": "SELECT mixTemplateId, status, currentIndex, LENGTH(assignedItems) as itemsLen, participantId FROM participant_sessions WHERE `condition` = 'MIX' ORDER BY mixTemplateId ASC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4EMZXV1BE262rJP.02474c5205e2 --database Yac4zPy3BEzfVh9QddoaLw --execute SELECT mixTemplateId, status, currentIndex, LENGTH(assignedItems) as itemsLen, participantId FROM participant_sessions WHERE `condition` = 'MIX' ORDER BY mixTemplateId ASC;",
+  "rows": [
+    {
+      "mixTemplateId": "1",
+      "status": "completed",
+      "currentIndex": "17",
+      "itemsLen": "739",
+      "participantId": "_xNYwYQ0OLcn"
+    },
+    {
+      "mixTemplateId": "2",
+      "status": "completed",
+      "currentIndex": "17",
+      "itemsLen": "739",
+      "participantId": "Z9TEGXKR__iW"
+    },
+    {
+      "mixTemplateId": "3",
+      "status": "completed",
+      "currentIndex": "17",
+      "itemsLen": "739",
+      "participantId": "8Dj50CQgeiGJ"
+    },
+    {
+      "mixTemplateId": "4",
+      "status": "completed",
+      "currentIndex": "17",
+      "itemsLen": "739",
+      "participantId": "mHJ5MFAHFDXA"
+    },
+    {
+      "mixTemplateId": "5",
+      "status": "completed",
+      "currentIndex": "17",
+      "itemsLen": "739",
+      "participantId": "EVNumg_31yvg"
+    },
+    {
+      "mixTemplateId": "6",
+      "status": "completed",
+      "currentIndex": "17",
+      "itemsLen": "739",
+      "participantId": "6kNv1Ja106SK"
+    },
+    {
+      "mixTemplateId": "7",
+      "status": "completed",
+      "currentIndex": "17",
+      "itemsLen": "739",
+      "participantId": "hrPxc_LFEmAT"
+    },
+    {
+      "mixTemplateId": "8",
+      "status": "completed",
+      "currentIndex": "17",
+      "itemsLen": "739",
+      "participantId": "yAmmW3j4dJEX"
+    },
+    {
+      "mixTemplateId": "9",
+      "status": "completed",
+      "currentIndex": "17",
+      "itemsLen": "739",
+      "participantId": "aowW6R77OnKn"
+    },
+    {
+      "mixTemplateId": "10",
+      "status": "active",
+      "currentIndex": "2",
+      "itemsLen": "739",
+      "participantId": "Ow7uMvCeUfnf"
+    },
+    {
+      "mixTemplateId": "11",
+      "status": "consent",
+      "currentIndex": "0",
+      "itemsLen": "739",
+      "participantId": "8eMUgwqPYQvq"
+    },
+    {
+      "mixTemplateId": "12",
+      "status": "completed",
+      "currentIndex": "17",
+      "itemsLen": "739",
+      "participantId": "vE-t7PhwnoQk"
+    },
+    {
+      "mixTemplateId": "13",
+      "status": "completed",
+      "currentIndex": "17",
+      "itemsLen": "739",
+      "participantId": "j_nIFVVUHsW4"
+    },
+    {
+      "mixTemplateId": "14",
+      "status": "completed",
+      "currentIndex": "17",
+      "itemsLen": "739",
+      "participantId": "WfOjvhttz04r"
+    },
+    {
+      "mixTemplateId": "15",
+      "status": "completed",
+      "currentIndex": "17",
+      "itemsLen": "739",
+      "participantId": "7sq4jWqR2uN2"
+    }
+  ],
+  "messages": [],
+  "stdout": "mixTemplateId\tstatus\tcurrentIndex\titemsLen\tparticipantId\n1\tcompleted\t17\t739\t_xNYwYQ0OLcn\n2\tcompleted\t17\t739\tZ9TEGXKR__iW\n3\tcompleted\t17\t739\t8Dj50CQgeiGJ\n4\tcompleted\t17\t739\tmHJ5MFAHFDXA\n5\tcompleted\t17\t739\tEVNumg_31yvg\n6\tcompleted\t17\t739\t6kNv1Ja106SK\n7\tcompleted\t17\t739\thrPxc_LFEmAT\n8\tcompleted\t17\t739\tyAmmW3j4dJEX\n9\tcompleted\t17\t739\taowW6R77OnKn\n10\tactive\t2\t739\tOw7uMvCeUfnf\n11\tconsent\t0\t739\t8eMUgwqPYQvq\n12\tcompleted\t17\t739\tvE-t7PhwnoQk\n13\tcompleted\t17\t739\tj_nIFVVUHsW4\n14\tcompleted\t17\t739\tWfOjvhttz04r\n15\tcompleted\t17\t739\t7sq4jWqR2uN2\n",
+  "stderr": "",
+  "execution_time_ms": 369
+}

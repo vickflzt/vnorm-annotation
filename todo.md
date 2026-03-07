@@ -162,3 +162,7 @@
 - [x] 修复 normalizeLatexDelimiters：新增 Step A 处理 "$$\n\begin{env}...\end{env}\n$$" 格式（LLM 输出中 $$ 和 \begin{env} 分行存储），防止 Step B 重复包裹导致 $$$$ 嵌套渲染失败
 ## LaTeX 渲染错误修复（第五批）
 - [x] 修复 isMathOnly 模式：先经过 normalizeLatexDelimiters 转换 \( \) 和 \[ \]，再判断是否含 $，解决 extractedResponseAnswer 字段 \([-2, 7]\) 未渲染的问题
+## MIX 套题生成逻辑 Bug 修复
+- [x] 确认第15套题数据完全正常，所有 slot 已被认领是正常行为
+- [x] 修复 generateExtraMixSessions：每个 category 选 4 道题（而非 2 道），4×4=16 符合 MATH_PER_SESSION
+- [x] 修复 generateExtraMixSessions： templateId 改用 MAX(templateId)+1（而非 getMixSessionCount），防止释放/重置后主键冲突

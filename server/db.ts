@@ -809,23 +809,28 @@ export async function generateExtraMixSessions(
   const GSM_CHECK_ID = "GSM-CHECK";
   const createdParticipantIds: string[] = [];
 
-  // Get current max templateId to continue numbering
-  const existingCount = await getMixSessionCount();
+  // Get current max templateId to continue numbering (use max templateId from mix_session_templates,
+  // NOT getMixSessionCount which counts participant_sessions rows and may be inflated by release/reset ops)
+  const maxTemplateRows = await db
+    .select({ maxId: sql<number>`MAX(${mixSessionTemplates.templateId})` })
+    .from(mixSessionTemplates);
+  const maxExistingTemplateId = maxTemplateRows[0]?.maxId ?? 0;
 
   for (let extra = 0; extra < count; extra++) {
-    // For each category, pick 2 items with lowest total count (AO+AJ), no duplicates within session
+    // For each category, pick 4 items with lowest total count (AO+AJ), no duplicates within session
+    // 4 categories × 4 items = 16 math items per session (MATH_PER_SESSION)
     const sessionItems: string[] = [];
     for (const cell of CELLS) {
       const sorted = [...cellItems[cell]].sort(
         (a, b) => (a.countAO + a.countAJ) - (b.countAO + b.countAJ)
       );
-      // Pick 2 least-used items not already in this session
+      // Pick 4 least-used items not already in this session
       let picked = 0;
       for (const item of sorted) {
         if (!sessionItems.includes(item.itemId)) {
           sessionItems.push(item.itemId);
           picked++;
-          if (picked === 2) break;
+          if (picked === 4) break;
         }
       }
     }
@@ -848,7 +853,7 @@ export async function generateExtraMixSessions(
       ...mathAssigned.slice(gsmInsertPos),
     ];
 
-    const templateId = existingCount + extra + 1;
+    const templateId = maxExistingTemplateId + extra + 1;
     await db.insert(mixSessionTemplates).values({
       templateId,
       items: JSON.stringify(fullItems),

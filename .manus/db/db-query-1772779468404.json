@@ -1,0 +1,40 @@
+{
+  "query": "SELECT * FROM experiment_config LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4EMZXV1BE262rJP.02474c5205e2 --database Yac4zPy3BEzfVh9QddoaLw --execute SELECT * FROM experiment_config LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "condition": "AO",
+      "targetParticipants": "8",
+      "inviteToken": "6Eo5W51-kkk_miFLKLQ1-SKX",
+      "isOpen": "1",
+      "createdAt": "2026-02-26 03:50:27",
+      "updatedAt": "2026-03-05 10:54:20",
+      "questionVersion": "v4"
+    },
+    {
+      "id": "2",
+      "condition": "AJ",
+      "targetParticipants": "8",
+      "inviteToken": "z8sz114UBkY3oA2q6PpUt4aM",
+      "isOpen": "1",
+      "createdAt": "2026-02-26 03:50:27",
+      "updatedAt": "2026-03-05 10:54:20",
+      "questionVersion": "v4"
+    },
+    {
+      "id": "30001",
+      "condition": "MIX",
+      "targetParticipants": "16",
+      "inviteToken": "fXkJJMhl1Ti5L6WMH14d3yNF",
+      "isOpen": "1",
+      "createdAt": "2026-03-02 16:41:39",
+      "updatedAt": "2026-03-05 12:30:01",
+      "questionVersion": "v4"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcondition\ttargetParticipants\tinviteToken\tisOpen\tcreatedAt\tupdatedAt\tquestionVersion\n1\tAO\t8\t6Eo5W51-kkk_miFLKLQ1-SKX\t1\t2026-02-26 03:50:27\t2026-03-05 10:54:20\tv4\n2\tAJ\t8\tz8sz114UBkY3oA2q6PpUt4aM\t1\t2026-02-26 03:50:27\t2026-03-05 10:54:20\tv4\n30001\tMIX\t16\tfXkJJMhl1Ti5L6WMH14d3yNF\t1\t2026-03-02 16:41:39\t2026-03-05 12:30:01\tv4\n",
+  "stderr": "",
+  "execution_time_ms": 360
+}

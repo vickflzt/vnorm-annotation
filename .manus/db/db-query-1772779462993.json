@@ -1,0 +1,110 @@
+{
+  "query": "SELECT version, category, COUNT(*) as count FROM question_bank GROUP BY version, category ORDER BY version, category;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4EMZXV1BE262rJP.02474c5205e2 --database Yac4zPy3BEzfVh9QddoaLw --execute SELECT version, category, COUNT(*) as count FROM question_bank GROUP BY version, category ORDER BY version, category;",
+  "rows": [
+    {
+      "version": "v1",
+      "category": "TP",
+      "count": "10"
+    },
+    {
+      "version": "v1",
+      "category": "TN",
+      "count": "10"
+    },
+    {
+      "version": "v1",
+      "category": "FP",
+      "count": "10"
+    },
+    {
+      "version": "v1",
+      "category": "FN",
+      "count": "10"
+    },
+    {
+      "version": "v1",
+      "category": "GSM-CHECK",
+      "count": "1"
+    },
+    {
+      "version": "v2",
+      "category": "TP",
+      "count": "10"
+    },
+    {
+      "version": "v2",
+      "category": "TN",
+      "count": "10"
+    },
+    {
+      "version": "v2",
+      "category": "FP",
+      "count": "10"
+    },
+    {
+      "version": "v2",
+      "category": "FN",
+      "count": "10"
+    },
+    {
+      "version": "v2",
+      "category": "GSM-CHECK",
+      "count": "1"
+    },
+    {
+      "version": "v3",
+      "category": "TP",
+      "count": "10"
+    },
+    {
+      "version": "v3",
+      "category": "TN",
+      "count": "10"
+    },
+    {
+      "version": "v3",
+      "category": "FP",
+      "count": "10"
+    },
+    {
+      "version": "v3",
+      "category": "FN",
+      "count": "10"
+    },
+    {
+      "version": "v3",
+      "category": "GSM-CHECK",
+      "count": "1"
+    },
+    {
+      "version": "v4",
+      "category": "TP",
+      "count": "10"
+    },
+    {
+      "version": "v4",
+      "category": "TN",
+      "count": "10"
+    },
+    {
+      "version": "v4",
+      "category": "FP",
+      "count": "10"
+    },
+    {
+      "version": "v4",
+      "category": "FN",
+      "count": "10"
+    },
+    {
+      "version": "v4",
+      "category": "GSM-CHECK",
+      "count": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "version\tcategory\tcount\nv1\tTP\t10\nv1\tTN\t10\nv1\tFP\t10\nv1\tFN\t10\nv1\tGSM-CHECK\t1\nv2\tTP\t10\nv2\tTN\t10\nv2\tFP\t10\nv2\tFN\t10\nv2\tGSM-CHECK\t1\nv3\tTP\t10\nv3\tTN\t10\nv3\tFP\t10\nv3\tFN\t10\nv3\tGSM-CHECK\t1\nv4\tTP\t10\nv4\tTN\t10\nv4\tFP\t10\nv4\tFN\t10\nv4\tGSM-CHECK\t1\n",
+  "stderr": "",
+  "execution_time_ms": 354
+}
